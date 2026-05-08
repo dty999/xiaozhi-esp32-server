@@ -7,6 +7,9 @@ import { verifyCaptcha } from '@/lib/captcha';
 import { cache } from '@/lib/redis';
 import { safeParseBody } from '@/lib/request-body';
 
+/** 是否为开发模式 */
+const IS_DEV = process.env.NODE_ENV === 'development';
+
 export async function POST(request: NextRequest) {
   const body = await safeParseBody(request);
   if (!body) {
@@ -15,38 +18,40 @@ export async function POST(request: NextRequest) {
   const { username, password, captchaId } = body;
 
   // ===================================================================
-  //  1. 密码解析：优先 SM2 解密，失败则当作明文处理（兼容测试）
+  //  1. 密码解析：开发模式直接明文，生产模式 SM2 优先降级明文
   // ===================================================================
   let realPassword: string;
-  let isPlaintext = false;
 
-  const privateKey = (await cache.hget('sys:params', 'server.private_key'))
-    || (await prisma.sysParams.findFirst({ where: { paramCode: 'server.private_key' } }))?.paramValue;
+  if (IS_DEV) {
+    // ── 开发模式：密码直传明文，跳过 SM2 解密与验证码校验 ──
+    realPassword = password;
+  } else {
+    // ── 生产模式：优先 SM2 解密，失败则当作明文处理 ──
+    const privateKey = (await cache.hget('sys:params', 'server.private_key'))
+      || (await prisma.sysParams.findFirst({ where: { paramCode: 'server.private_key' } }))?.paramValue;
 
-  if (privateKey) {
-    const decrypted = decryptoLoginData(password, privateKey);
-    if (decrypted) {
-      // SM2 解密成功 -> 验证码验证走解密后的验证码
-      realPassword = decrypted.password;
+    if (privateKey) {
+      const decrypted = decryptoLoginData(password, privateKey);
+      if (decrypted) {
+        // SM2 解密成功 -> 验证码验证走解密后的验证码
+        realPassword = decrypted.password;
 
-      if (captchaId) {
-        const captchaValid = await verifyCaptcha(captchaId, decrypted.captcha);
-        if (!captchaValid) {
-          return NextResponse.json({ code: 400, msg: '验证码错误' });
+        if (captchaId) {
+          const captchaValid = await verifyCaptcha(captchaId, decrypted.captcha);
+          if (!captchaValid) {
+            return NextResponse.json({ code: 400, msg: '验证码错误' });
+          }
         }
+      } else {
+        // SM2 解密失败 -> 降级为明文
+        realPassword = password;
       }
     } else {
-      // SM2 解密失败 -> 降级为明文
+      // 没有 SM2 私钥 -> 直接按明文处理
       realPassword = password;
-      isPlaintext = true;
     }
-  } else {
-    // 没有 SM2 私钥 -> 直接按明文处理
-    realPassword = password;
-    isPlaintext = true;
   }
 
-  // 明文模式跳过 captcha（开发测试用）
   // ===================================================================
   //  2. 查找用户
   // ===================================================================

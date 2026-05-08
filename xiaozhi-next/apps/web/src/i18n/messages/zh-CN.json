@@ -23,7 +23,10 @@
     "phone": "手机号",
     "sendSms": "发送验证码",
     "loginSuccess": "登录成功",
-    "registerSuccess": "注册成功"
+    "registerSuccess": "注册成功",
+    "resetPassword": "重置密码",
+    "goLogin": "前往登录",
+    "backLogin": "返回登录"
   },
   "nav": {
     "home": "首页",
@@ -31,8 +34,61 @@
     "devices": "设备管理",
     "knowledge": "知识库",
     "voiceClone": "声音克隆",
+    "voiceResource": "音色资源",
+    "voicePrints": "声纹管理",
     "ota": "OTA管理",
     "users": "用户管理",
+    "params": "参数管理",
+    "dicts": "字典管理",
+    "templates": "模板管理",
+    "replacement": "替换词",
+    "server": "服务端管理",
+    "features": "功能配置",
+    "timbre": "音色管理",
+    "providers": "供应器管理",
     "settings": "系统设置"
+  },
+  "agent": {
+    "title": "智能体",
+    "myAgents": "我的智能体",
+    "newAgent": "新建智能体",
+    "config": "配置",
+    "chatHistory": "聊天记录",
+    "basicInfo": "基本信息",
+    "modelConfig": "模型配置",
+    "ttsConfig": "语音合成",
+    "plugins": "插件工具",
+    "systemPrompt": "系统提示词",
+    "tags": "标签",
+    "addTag": "添加标签",
+    "bindDevice": "绑定设备",
+    "activationCode": "激活码"
+  },
+  "device": {
+    "title": "设备管理",
+    "macAddress": "MAC地址",
+    "bind": "绑定",
+    "unbind": "解绑",
+    "register": "注册设备",
+    "manualAdd": "手动添加",
+    "online": "在线",
+    "offline": "离线"
+  },
+  "knowledge": {
+    "title": "知识库",
+    "createDataset": "创建知识库",
+    "uploadDoc": "上传文档",
+    "parse": "解析",
+    "chunks": "切片",
+    "retrievalTest": "召回测试",
+    "documentCount": "文档数"
+  },
+  "ota": {
+    "title": "OTA管理",
+    "firmware": "固件",
+    "upload": "上传固件",
+    "version": "版本",
+    "type": "类型",
+    "fileSize": "文件大小"
   }
 }

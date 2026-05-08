@@ -5,6 +5,8 @@ import { sm2Decrypt } from '@/lib/sm2';
 import { verifySmsCode } from '@/lib/sms';
 import { safeParseBody } from '@/lib/request-body';
 
+const IS_DEV = process.env.NODE_ENV === 'development';
+
 export async function PUT(request: NextRequest) {
   const body = await safeParseBody(request);
   if (!body) {
@@ -12,25 +14,32 @@ export async function PUT(request: NextRequest) {
   }
   const { phone, password, code, captchaId } = body;
 
-  // 验证短信验证码
-  const valid = await verifySmsCode(phone, code);
-  if (!valid) {
-    return NextResponse.json({ code: 400, msg: '验证码错误或已过期' });
-  }
-
-  // SM2解密新密码
-  const privateKeyParam = await prisma.sysParams.findFirst({
-    where: { paramCode: 'server.private_key' },
-  });
-  if (!privateKeyParam) {
-    return NextResponse.json({ code: 500, msg: '系统配置错误：缺少SM2私钥' });
+  // ── 开发模式：跳过短信验证与 SM2 解密 ──
+  if (!IS_DEV) {
+    // 验证短信验证码
+    const valid = await verifySmsCode(phone, code);
+    if (!valid) {
+      return NextResponse.json({ code: 400, msg: '验证码错误或已过期' });
+    }
   }
 
   let plainPassword: string;
-  try {
-    plainPassword = sm2Decrypt(password, privateKeyParam.paramValue);
-  } catch {
-    return NextResponse.json({ code: 400, msg: '密码解密失败' });
+
+  if (IS_DEV) {
+    plainPassword = password; // 明文直用
+  } else {
+    // SM2解密新密码
+    const privateKeyParam = await prisma.sysParams.findFirst({
+      where: { paramCode: 'server.private_key' },
+    });
+    if (!privateKeyParam) {
+      return NextResponse.json({ code: 500, msg: '系统配置错误：缺少SM2私钥' });
+    }
+    try {
+      plainPassword = sm2Decrypt(password, privateKeyParam.paramValue);
+    } catch {
+      return NextResponse.json({ code: 400, msg: '密码解密失败' });
+    }
   }
 
   // 查找用户

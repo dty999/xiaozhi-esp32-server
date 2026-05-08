@@ -6,6 +6,8 @@ import { verifySmsCode } from '@/lib/sms';
 import { generateSnowflakeId } from '@/lib/snowflake';
 import { safeParseBody } from '@/lib/request-body';
 
+const IS_DEV = process.env.NODE_ENV === 'development';
+
 export async function POST(request: NextRequest) {
   const body = await safeParseBody(request);
   if (!body) {
@@ -13,25 +15,29 @@ export async function POST(request: NextRequest) {
   }
   const { username, password, captchaId, mobileCaptcha, phone, areaCode } = body;
 
-  // 获取 SM2 私钥
-  const param = await prisma.sysParams.findFirst({
-    where: { paramCode: 'server.private_key' },
-  });
-  const privateKey = param?.paramValue;
-  if (!privateKey) {
-    return NextResponse.json({ code: 500, msg: '系统配置错误' });
-  }
-
-  // 解密密码
+  // ── 开发模式：密码已为明文，跳过 SM2 与短信验证 ──
   let plainPassword: string;
-  try {
-    plainPassword = sm2Decrypt(password, privateKey);
-  } catch {
-    return NextResponse.json({ code: 400, msg: '密码解密失败' });
+
+  if (IS_DEV) {
+    plainPassword = password; // 明文直用
+  } else {
+    // 生产模式：SM2 解密
+    const param = await prisma.sysParams.findFirst({
+      where: { paramCode: 'server.private_key' },
+    });
+    const privateKey = param?.paramValue;
+    if (!privateKey) {
+      return NextResponse.json({ code: 500, msg: '系统配置错误' });
+    }
+    try {
+      plainPassword = sm2Decrypt(password, privateKey);
+    } catch {
+      return NextResponse.json({ code: 400, msg: '密码解密失败' });
+    }
   }
 
-  // 短信验证码校验
-  if (phone && mobileCaptcha) {
+  // 短信验证码校验（开发模式跳过）
+  if (!IS_DEV && phone && mobileCaptcha) {
     const valid = await verifySmsCode(phone, mobileCaptcha);
     if (!valid) {
       return NextResponse.json({ code: 400, msg: '短信验证码错误或已过期' });

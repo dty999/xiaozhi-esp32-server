@@ -4,6 +4,26 @@ import { prisma } from '@/lib/db';
 import { cache } from '@/lib/redis';
 import { safeParseBody } from '@/lib/request-body';
 
+// GET /api/admin/params/[id] — 参数详情
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = await authenticate('oauth2', request);
+  if (!auth.authenticated || auth.payload?.superAdmin !== 1) {
+    return NextResponse.json({ code: 403, msg: '无权限' }, { status: 403 });
+  }
+
+  const { id } = await params;
+
+  const param = await prisma.sysParams.findUnique({ where: { id: BigInt(id) } });
+  if (!param) {
+    return NextResponse.json({ code: 404, msg: '参数不存在' });
+  }
+
+  return NextResponse.json({ code: 0, data: param });
+}
+
 // PUT /api/admin/params/[id] — 更新参数
 export async function PUT(
   request: NextRequest,
