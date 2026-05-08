@@ -1,0 +1,40 @@
+# 解除祖项目 *.json 通配之误，放行 Next.js 所需之配置文件
+!turbo.json
+!tsconfig*.json
+!**/tsconfig.json
+!**/src/**/*.json
+!prisma/**/*.json
+
+# Next.js
+.next/
+out/
+
+# 依赖
+node_modules/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# 环境变量
+.env
+.env.local
+.env.development
+.env.production
+
+# 日志
+*.log
+npm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 上传文件
+uploadfile/

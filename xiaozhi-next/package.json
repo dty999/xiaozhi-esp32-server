@@ -1,0 +1,23 @@
+{
+  "name": "xiaozhi-next",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "test": "turbo test",
+    "db:generate": "prisma generate --schema=apps/web/prisma/schema.prisma",
+    "db:push": "prisma db push --schema=apps/web/prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema=apps/web/prisma/schema.prisma",
+    "db:studio": "prisma studio --schema=apps/web/prisma/schema.prisma",
+    "db:seed": "tsx apps/web/prisma/seed.ts"
+  },
+  "devDependencies": {
+    "@prisma/client": "^6.0.0",
+    "@types/node": "^20.0.0",
+    "prisma": "^6.0.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.5.0"
+  },
+  "packageManager": "pnpm@9.0.0"
+}

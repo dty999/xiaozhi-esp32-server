@@ -1,0 +1,452 @@
+// ============================
+// 数据源配置
+// ============================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================
+// 系统模块 (sys_)
+// ============================
+
+model SysUser {
+  id         BigInt       @id
+  username   String       @unique @db.VarChar(64)
+  password   String       @db.VarChar(256)
+  realName   String?      @map("real_name") @db.VarChar(64)
+  headUrl    String?      @map("head_url") @db.VarChar(512)
+  email      String?      @db.VarChar(128)
+  mobile     String?      @db.VarChar(20)
+  gender     Int?         @db.SmallInt
+  superAdmin Int          @default(0) @map("super_admin") @db.SmallInt
+  status     Int          @default(1) @db.SmallInt
+  creator    BigInt?
+  createDate DateTime?    @map("create_date") @db.Timestamp(0)
+  devices    AiDevice[]
+  agents     AiAgent[]
+  voicePrints AgentVoicePrint[]
+  voiceClones VoiceClone[]
+
+  @@map("sys_user")
+}
+
+model SysUserToken {
+  id         BigInt    @id
+  userId     BigInt    @map("user_id")
+  token      String    @db.VarChar(128)
+  expireDate DateTime  @map("expire_date") @db.Timestamp(0)
+  updateDate DateTime  @map("update_date") @db.Timestamp(0)
+
+  @@map("sys_user_token")
+}
+
+model SysParams {
+  id         BigInt       @id
+  paramCode  String       @map("param_code") @db.VarChar(64)
+  paramValue String       @map("param_value") @db.Text
+  valueType  Int?         @default(1) @map("value_type") @db.SmallInt
+  remark     String?      @db.VarChar(256)
+  creator    BigInt?
+  createDate DateTime?    @map("create_date") @db.Timestamp(0)
+
+  @@map("sys_params")
+}
+
+model SysDictType {
+  id        BigInt       @id
+  dictType  String       @map("dict_type") @db.VarChar(64)
+  dictName  String       @map("dict_name") @db.VarChar(128)
+  remark    String?      @db.VarChar(256)
+  sort      Int          @default(0)
+  creator   BigInt?
+  createDate DateTime?   @map("create_date") @db.Timestamp(0)
+  updater   BigInt?
+  updateDate DateTime?   @map("update_date") @db.Timestamp(0)
+  dictDatas SysDictData[]
+
+  @@map("sys_dict_type")
+}
+
+model SysDictData {
+  id         BigInt       @id
+  dictTypeId BigInt       @map("dict_type_id")
+  dictLabel  String       @map("dict_label") @db.VarChar(128)
+  dictValue  String       @map("dict_value") @db.VarChar(128)
+  remark     String?      @db.VarChar(256)
+  sort       Int          @default(0)
+  creator    BigInt?
+  createDate DateTime?    @map("create_date") @db.Timestamp(0)
+  updater    BigInt?
+  updateDate DateTime?    @map("update_date") @db.Timestamp(0)
+  dictType   SysDictType  @relation(fields: [dictTypeId], references: [id])
+
+  @@map("sys_dict_data")
+}
+
+// ============================
+// 智能体模块 (ai_agent*)
+// ============================
+
+model AiAgent {
+  id              BigInt    @id
+  agentCode       String    @map("agent_code") @db.VarChar(128)
+  agentName       String    @map("agent_name") @db.VarChar(128)
+  asrModelId      BigInt?   @map("asr_model_id")
+  vadModelId      BigInt?   @map("vad_model_id")
+  llmModelId      BigInt?   @map("llm_model_id")
+  ttsModelId      BigInt?   @map("tts_model_id")
+  memModelId      BigInt?   @map("mem_model_id")
+  intentModelId   BigInt?   @map("intent_model_id")
+  vllmModelId     BigInt?   @map("vllm_model_id")
+  slmModelId      BigInt?   @map("slm_model_id")
+  ttsVoiceId      BigInt?   @map("tts_voice_id")
+  ttsLanguage     String?   @map("lang_code") @db.VarChar(20)
+  ttsVolume       Int?      @map("tts_volume")
+  ttsRate         Int?      @map("tts_speed_rate")
+  ttsPitch        Int?      @map("tts_pitch")
+  systemPrompt    String?   @map("system_prompt") @db.Text
+  summaryMemory   String?   @map("summary_memory") @db.Text
+  chatHistoryConf String?   @map("chat_history_conf") @db.VarChar(2048)
+  functions       String?   @db.VarChar(2048)
+  sort            Int?
+  updater         BigInt?
+  createDate      DateTime? @map("create_date") @db.Timestamp(0)
+  updateDate      DateTime? @map("update_date") @db.Timestamp(0)
+  userId          BigInt    @map("creator")
+  user            SysUser   @relation(fields: [userId], references: [id])
+  devices         AiDevice[]
+  chatHistories   AgentChatHistory[]
+  voicePrints     AgentVoicePrint[]
+  tags            AgentTagRelation[]
+  contextProviders AgentContextProvider[]
+  plugins         AgentPluginMapping[]
+  correctWords    AgentCorrectWordMapping[]
+
+  @@map("ai_agent")
+}
+
+model AiAgentTemplate {
+  id            BigInt    @id
+  agentCode     String    @map("agent_code") @db.VarChar(128)
+  agentName     String    @map("agent_name") @db.VarChar(128)
+  asrModelId    BigInt?   @map("asr_model_id")
+  vadModelId    BigInt?   @map("vad_model_id")
+  llmModelId    BigInt?   @map("llm_model_id")
+  ttsModelId    BigInt?   @map("tts_model_id")
+  memModelId    BigInt?   @map("mem_model_id")
+  intentModelId BigInt?   @map("intent_model_id")
+  vllmModelId   BigInt?   @map("vllm_model_id")
+  ttsVoiceId    BigInt?   @map("tts_voice_id")
+  ttsLanguage   String?   @map("lang_code") @db.VarChar(20)
+  ttsVolume     Int?      @map("tts_volume")
+  ttsRate       Int?      @map("tts_speed_rate")
+  ttsPitch      Int?      @map("tts_pitch")
+  systemPrompt  String?   @map("system_prompt") @db.Text
+  functions     String?   @db.VarChar(2048)
+  sort          Int?
+  creator       BigInt?
+  updater       BigInt?
+  createDate    DateTime? @map("create_date") @db.Timestamp(0)
+  updateDate    DateTime? @map("update_date") @db.Timestamp(0)
+
+  @@map("ai_agent_template")
+}
+
+model AgentTag {
+  id        BigInt    @id
+  tagName   String    @map("tag_name") @db.VarChar(64)
+  creator   BigInt?
+  createDate DateTime? @map("create_date") @db.Timestamp(0)
+  relations AgentTagRelation[]
+
+  @@map("ai_agent_tag")
+}
+
+model AgentTagRelation {
+  id      BigInt   @id
+  agentId BigInt   @map("agent_id")
+  tagId   BigInt   @map("tag_id")
+  sort    Int?
+  agent   AiAgent  @relation(fields: [agentId], references: [id])
+  tag     AgentTag @relation(fields: [tagId], references: [id])
+
+  @@map("ai_agent_tag_relation")
+}
+
+// ============================
+// 聊天与声纹
+// ============================
+
+model AgentChatHistory {
+  id         BigInt    @id
+  agentId    BigInt    @map("agent_id")
+  sessionId  String    @map("session_id") @db.VarChar(128)
+  chatType   Int       @map("chat_type") @db.SmallInt  // 0=agent, 1=user
+  content    String?   @db.Text
+  audioId    String?   @map("audio_id") @db.VarChar(32)
+  macAddress String?   @map("mac_address") @db.VarChar(32)
+  createdAt  DateTime? @map("created_at") @db.Timestamp(0)
+  agent      AiAgent   @relation(fields: [agentId], references: [id])
+  audio      AgentChatAudio? @relation(fields: [audioId], references: [audioId])
+
+  @@index([sessionId])
+  @@map("ai_agent_chat_history")
+}
+
+model AgentChatAudio {
+  audioId   String @id @map("audio_id") @db.VarChar(32)
+  audioData Bytes  @map("audio_data") @db.ByteA
+  createdAt DateTime? @map("created_at") @db.Timestamp(0)
+  chatHistories AgentChatHistory[]
+
+  @@map("ai_agent_chat_audio")
+}
+
+model AgentChatTitle {
+  id        BigInt    @id
+  agentId   BigInt    @map("agent_id")
+  sessionId String    @map("session_id") @db.VarChar(128)
+  title     String?   @db.VarChar(256)
+
+  @@map("ai_agent_chat_title")
+}
+
+model AgentVoicePrint {
+  id         BigInt    @id
+  sourceName String?   @map("source_name") @db.VarChar(128)
+  audioId    String?   @map("audio_id") @db.VarChar(32)
+  introduce  String?   @db.VarChar(512)
+  agentId    BigInt    @map("agent_id")
+  userId     BigInt    @map("user_id")
+  creator    BigInt?
+  createDate DateTime? @map("create_date") @db.Timestamp(0)
+  agent      AiAgent   @relation(fields: [agentId], references: [id])
+  user       SysUser   @relation(fields: [userId], references: [id])
+
+  @@map("ai_agent_voice_print")
+}
+
+// ============================
+// 设备与 OTA
+// ============================
+
+model AiDevice {
+  id              BigInt    @id
+  macAddress      String    @map("mac_address") @db.VarChar(32)
+  agentId         BigInt    @map("agent_id")
+  userId          BigInt    @map("user_id")
+  board           String?   @db.VarChar(64)
+  appVersion      String?   @map("app_version") @db.VarChar(32)
+  alias           String?   @db.VarChar(64)
+  deviceType      String?   @map("device_type") @db.VarChar(32)
+  isBound         Int?      @map("is_bound") @db.SmallInt
+  activationCode  String?   @map("activation_code") @db.VarChar(32)
+  lastConnectedAt DateTime? @map("last_connected_at") @db.Timestamp(0)
+  otaAutoUpdate   Int?      @default(0) @map("ota_auto_update") @db.SmallInt
+  firmwareType    String?   @map("firmware_type") @db.VarChar(32)
+  chipInfo        String?   @map("chip_info") @db.VarChar(256)
+  partitionTable  String?   @map("partition_table") @db.VarChar(512)
+  creator         BigInt?
+  createDate      DateTime? @map("create_date") @db.Timestamp(0)
+  updater         BigInt?
+  updateDate      DateTime? @map("update_date") @db.Timestamp(0)
+  agent           AiAgent   @relation(fields: [agentId], references: [id])
+  user            SysUser   @relation(fields: [userId], references: [id])
+
+  @@map("ai_device")
+}
+
+model AiOta {
+  id           BigInt    @id
+  firmwareName String    @map("firmware_name") @db.VarChar(255)
+  firmwarePath String    @map("firmware_path") @db.VarChar(512)
+  type         String?   @db.VarChar(32)
+  version      String?   @db.VarChar(64)
+  fileSize     BigInt?   @map("file_size")
+  md5          String?   @db.VarChar(64)
+  remark       String?   @db.VarChar(512)
+  creator      BigInt?
+  createDate   DateTime? @map("create_date") @db.Timestamp(0)
+  updater      BigInt?
+  updateDate   DateTime? @map("update_date") @db.Timestamp(0)
+
+  @@map("ai_ota")
+}
+
+// ============================
+// 模型配置
+// ============================
+
+model ModelProvider {
+  id         BigInt    @id
+  modelType  String    @map("model_type") @db.VarChar(32)
+  providerCode String  @map("provider_code") @db.VarChar(64)
+  name       String    @db.VarChar(128)
+  fields     Json?     @db.Json
+  sort       Int?
+  creator    BigInt?
+  createDate DateTime? @map("create_date") @db.Timestamp(0)
+  updater    BigInt?
+  updateDate DateTime? @map("update_date") @db.Timestamp(0)
+
+  @@map("ai_model_provider")
+}
+
+model ModelConfig {
+  id          BigInt    @id
+  modelType   String    @map("model_type") @db.VarChar(32)
+  modelCode   String    @map("model_code") @db.VarChar(128)
+  modelName   String    @map("model_name") @db.VarChar(256)
+  isDefault   Int?      @default(0) @map("is_default") @db.SmallInt
+  isEnabled   Int?      @default(1) @map("is_enabled") @db.SmallInt
+  configJson  Json?     @map("config_json") @db.Json
+  docLink     String?   @map("doc_link") @db.VarChar(512)
+  remark      String?   @db.VarChar(512)
+  sort        Int?
+  creator     BigInt?
+  createDate  DateTime? @map("create_date") @db.Timestamp(0)
+  updater     BigInt?
+  updateDate  DateTime? @map("update_date") @db.Timestamp(0)
+
+  @@map("ai_model_config")
+}
+
+model AiTtsVoice {
+  id             BigInt    @id
+  languages      String?   @db.VarChar(128)
+  name           String    @db.VarChar(128)
+  remark         String?   @db.VarChar(512)
+  referenceAudio String?   @map("reference_audio") @db.VarChar(512)
+  referenceText  String?   @map("reference_text") @db.VarChar(1024)
+  sort           Int?
+  ttsModelId     BigInt    @map("tts_model_id")
+  ttsVoice       Json?     @map("tts_voice") @db.Json
+  voiceDemo      String?   @map("voice_demo") @db.VarChar(512)
+  creator        BigInt?
+  createDate     DateTime? @map("create_date") @db.Timestamp(0)
+  updater        BigInt?
+  updateDate     DateTime? @map("update_date") @db.Timestamp(0)
+
+  @@map("ai_tts_voice")
+}
+
+// ============================
+// 知识库与声音克隆
+// ============================
+
+model KnowledgeBase {
+  id              BigInt    @id
+  datasetId       String    @map("dataset_id") @db.VarChar(64)
+  ragModelId      BigInt    @map("rag_model_id")
+  name            String    @db.VarChar(128)
+  avatar          String?   @db.VarChar(512)
+  description     String?   @db.Text
+  embeddingModel  String?   @map("embedding_model") @db.VarChar(128)
+  permission      String?   @db.VarChar(32)
+  chunkMethod     String?   @map("chunk_method") @db.VarChar(64)
+  tenantId        String?   @map("tenant_id") @db.VarChar(64)
+  parserConfig    Json?     @map("parser_config") @db.Json
+  creator         BigInt?
+  createDate      DateTime? @map("create_date") @db.Timestamp(0)
+  updater         BigInt?
+  updateDate      DateTime? @map("update_date") @db.Timestamp(0)
+  documents       Document[]
+
+  @@map("ai_rag_dataset")
+}
+
+model Document {
+  id              BigInt    @id
+  knowledgeBaseId BigInt    @map("knowledge_base_id")
+  documentId      String    @map("document_id") @db.VarChar(64)
+  name            String    @db.VarChar(256)
+  fileSize        BigInt?   @map("file_size")
+  fileType        String?   @map("file_type") @db.VarChar(32)
+  status          String?   @db.VarChar(32)
+  progress        String?   @db.VarChar(32)
+  chunkMethod     String?   @map("chunk_method") @db.VarChar(64)
+  chunkCount      Int?      @map("chunk_count")
+  tokenCount      Int?      @map("token_count")
+  parserConfig    Json?     @map("parser_config") @db.Json
+  creator         BigInt?
+  createDate      DateTime? @map("create_date") @db.Timestamp(0)
+  knowledgeBase   KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id])
+
+  @@map("ai_rag_knowledge_document")
+}
+
+model VoiceClone {
+  id          BigInt    @id
+  name        String    @db.VarChar(128)
+  modelId     BigInt    @map("model_id")
+  voiceId     String    @map("voice_id") @db.VarChar(128)
+  languages   String?   @db.VarChar(128)
+  userId      BigInt    @map("user_id")
+  trainStatus Int?      @default(0) @map("train_status") @db.SmallInt
+  creator     BigInt?
+  createDate  DateTime? @map("create_date") @db.Timestamp(0)
+  user        SysUser   @relation(fields: [userId], references: [id])
+
+  @@map("ai_voice_clone")
+}
+
+model AgentContextProvider {
+  id              BigInt    @id
+  agentId         BigInt    @map("agent_id")
+  contextProviders Json?    @map("context_providers") @db.Json
+  creator         BigInt?
+  createDate      DateTime? @map("create_date") @db.Timestamp(0)
+  agent           AiAgent   @relation(fields: [agentId], references: [id])
+
+  @@map("ai_agent_context_provider")
+}
+
+model AgentCorrectWordFile {
+  id        BigInt    @id
+  fileName  String    @map("file_name") @db.VarChar(256)
+  content   String    @db.Text
+  wordCount Int?      @map("word_count")
+  userId    BigInt    @map("user_id")
+  creator   BigInt?
+  createDate DateTime? @map("create_date") @db.Timestamp(0)
+  mappings  AgentCorrectWordMapping[]
+
+  @@map("ai_agent_correct_word_file")
+}
+
+model AgentCorrectWordItem {
+  id         BigInt   @id
+  fileId     BigInt   @map("file_id")
+  sourceWord String   @map("source_word") @db.VarChar(256)
+  targetWord String   @map("target_word") @db.VarChar(256)
+
+  @@map("ai_agent_correct_word_item")
+}
+
+model AgentCorrectWordMapping {
+  id      BigInt  @id
+  agentId BigInt  @map("agent_id")
+  fileId  BigInt  @map("file_id")
+  sort    Int?
+  agent   AiAgent @relation(fields: [agentId], references: [id])
+  file    AgentCorrectWordFile @relation(fields: [fileId], references: [id])
+
+  @@map("ai_agent_correct_word_mapping")
+}
+
+model AgentPluginMapping {
+  id       BigInt  @id
+  agentId  BigInt  @map("agent_id")
+  pluginId BigInt  @map("plugin_id")
+  targetId BigInt? @map("target_id")
+  creator  BigInt?
+  agent    AiAgent @relation(fields: [agentId], references: [id])
+
+  @@map("ai_agent_plugin_mapping")
+}
