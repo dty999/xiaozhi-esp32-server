@@ -239,8 +239,8 @@ model AgentVoicePrint {
 model AiDevice {
   id              BigInt    @id
   macAddress      String    @map("mac_address") @db.VarChar(32)
-  agentId         BigInt    @map("agent_id")
-  userId          BigInt    @map("user_id")
+  agentId         BigInt    @default(0) @map("agent_id")
+  userId          BigInt    @default(0) @map("user_id")
   board           String?   @db.VarChar(64)
   appVersion      String?   @map("app_version") @db.VarChar(32)
   alias           String?   @db.VarChar(64)
@@ -256,8 +256,8 @@ model AiDevice {
   createDate      DateTime? @map("create_date") @db.Timestamp(0)
   updater         BigInt?
   updateDate      DateTime? @map("update_date") @db.Timestamp(0)
-  agent           AiAgent   @relation(fields: [agentId], references: [id])
-  user            SysUser   @relation(fields: [userId], references: [id])
+  agent           AiAgent?  @relation(fields: [agentId], references: [id])
+  user            SysUser?  @relation(fields: [userId], references: [id])
 
   @@map("ai_device")
 }
