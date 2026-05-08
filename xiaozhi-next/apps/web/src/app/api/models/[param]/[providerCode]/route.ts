@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
 import { generateSnowflakeId } from '@/lib/snowflake';
+import { safeParseBody } from '@/lib/request-body';
 
 // GET /api/models/[param]/[providerCode] — 获取某供应商下的模型列表（param 为模型类型）
 export async function GET(
@@ -37,7 +38,10 @@ export async function POST(
   }
 
   const { param } = await params;
-  const body = await request.json();
+  const body = await safeParseBody(request);
+  if (!body) {
+    return NextResponse.json({ code: 400, msg: '请求参数格式错误' });
+  }
 
   const model = await prisma.modelConfig.create({
     data: {

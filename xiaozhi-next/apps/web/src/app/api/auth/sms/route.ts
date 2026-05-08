@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyCaptcha } from '@/lib/captcha';
 import { sendSmsCode } from '@/lib/sms';
+import { safeParseBody } from '@/lib/request-body';
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
+  const body = await safeParseBody(request);
+  if (!body) {
+    return NextResponse.json({ code: 400, msg: '请求参数格式错误' });
+  }
   const { phone, captcha, captchaId } = body;
 
   // 1. 验证图形验证码

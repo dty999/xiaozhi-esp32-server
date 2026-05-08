@@ -4,9 +4,13 @@ import { hashPassword } from '@/lib/password';
 import { sm2Decrypt } from '@/lib/sm2';
 import { verifySmsCode } from '@/lib/sms';
 import { generateSnowflakeId } from '@/lib/snowflake';
+import { safeParseBody } from '@/lib/request-body';
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
+  const body = await safeParseBody(request);
+  if (!body) {
+    return NextResponse.json({ code: 400, msg: '请求参数格式错误' });
+  }
   const { username, password, captchaId, mobileCaptcha, phone, areaCode } = body;
 
   // 获取 SM2 私钥

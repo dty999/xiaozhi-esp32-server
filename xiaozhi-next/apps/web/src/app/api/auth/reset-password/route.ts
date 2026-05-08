@@ -3,9 +3,14 @@ import { prisma } from '@/lib/db';
 import { hashPassword } from '@/lib/password';
 import { sm2Decrypt } from '@/lib/sm2';
 import { verifySmsCode } from '@/lib/sms';
+import { safeParseBody } from '@/lib/request-body';
 
 export async function PUT(request: NextRequest) {
-  const { phone, password, code, captchaId } = await request.json();
+  const body = await safeParseBody(request);
+  if (!body) {
+    return NextResponse.json({ code: 400, msg: '请求参数格式错误' });
+  }
+  const { phone, password, code, captchaId } = body;
 
   // 验证短信验证码
   const valid = await verifySmsCode(phone, code);

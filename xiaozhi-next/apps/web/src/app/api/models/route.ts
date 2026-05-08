@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
 import { generateSnowflakeId } from '@/lib/snowflake';
+import { safeParseBody } from '@/lib/request-body';
 
 // GET /api/models — 模型查询（分页/筛选）
 export async function GET(request: NextRequest) {
@@ -43,7 +44,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ code: 401, msg: auth.error }, { status: 401 });
   }
 
-  const body = await request.json();
+  const body = await safeParseBody(request);
+  if (!body) {
+    return NextResponse.json({ code: 400, msg: '请求参数格式错误' });
+  }
   const model = await prisma.modelConfig.create({
     data: {
       id: generateSnowflakeId(),

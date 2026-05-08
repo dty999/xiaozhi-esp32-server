@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
 import { generateSnowflakeId } from '@/lib/snowflake';
+import { safeParseBody } from '@/lib/request-body';
 
 // GET /api/admin/dict/types — 字典类型分页
 export async function GET(request: NextRequest) {
@@ -41,7 +42,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ code: 403, msg: '无权限' }, { status: 403 });
   }
 
-  const body = await request.json();
+  const body = await safeParseBody(request);
+  if (!body) {
+    return NextResponse.json({ code: 400, msg: '请求参数格式错误' });
+  }
   const dictType = await prisma.sysDictType.create({
     data: {
       id: generateSnowflakeId(),
@@ -62,7 +66,10 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ code: 403, msg: '无权限' }, { status: 403 });
   }
 
-  const body = await request.json();
+  const body = await safeParseBody(request);
+  if (!body) {
+    return NextResponse.json({ code: 400, msg: '请求参数格式错误' });
+  }
   const dictType = await prisma.sysDictType.update({
     where: { id: BigInt(body.id) },
     data: {

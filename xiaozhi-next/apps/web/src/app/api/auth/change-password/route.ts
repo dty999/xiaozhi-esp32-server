@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
 import { verifyPassword, hashPassword } from '@/lib/password';
+import { safeParseBody } from '@/lib/request-body';
 
 export async function PUT(request: NextRequest) {
   const auth = await authenticate('oauth2', request);
@@ -9,7 +10,11 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ code: 401, msg: auth.error }, { status: 401 });
   }
 
-  const { oldPassword, newPassword } = await request.json();
+  const body = await safeParseBody(request);
+  if (!body) {
+    return NextResponse.json({ code: 400, msg: '请求参数格式错误' });
+  }
+  const { oldPassword, newPassword } = body;
 
   const user = await prisma.sysUser.findUnique({ where: { id: auth.payload!.userId } });
   if (!user || !verifyPassword(oldPassword, user.password)) {

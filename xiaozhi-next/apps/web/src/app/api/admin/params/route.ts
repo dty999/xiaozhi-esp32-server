@@ -3,6 +3,7 @@ import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
 import { cache } from '@/lib/redis';
 import { generateSnowflakeId } from '@/lib/snowflake';
+import { safeParseBody } from '@/lib/request-body';
 
 // 敏感参数关键词
 const SENSITIVE_KEYWORDS = ['api_key', 'api_key_id', 'apikey', 'secret', 'token', 'password', 'private'];
@@ -55,7 +56,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ code: 403, msg: '无权限' }, { status: 403 });
   }
 
-  const body = await request.json();
+  const body = await safeParseBody(request);
+  if (!body) {
+    return NextResponse.json({ code: 400, msg: '请求参数格式错误' });
+  }
   const param = await prisma.sysParams.create({
     data: {
       id: generateSnowflakeId(),

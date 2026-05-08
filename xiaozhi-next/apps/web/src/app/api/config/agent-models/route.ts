@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
+import { safeParseBody } from '@/lib/request-body';
 
 // POST /api/config/agent-models — 智能体配置下发（xiaozhi-server 调用，ServerSecret 鉴权）
 export async function POST(request: NextRequest) {
@@ -9,7 +10,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ code: 403, msg: auth.error }, { status: 403 });
   }
 
-  const body = await request.json();
+  const body = await safeParseBody(request);
+  if (!body) {
+    return NextResponse.json({ code: 400, msg: '请求参数格式错误' });
+  }
   const { macAddress, clientId, selectedModule } = body;
 
   // 1. 根据 MAC 查找设备

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
 import { cache } from '@/lib/redis';
+import { safeParseBody } from '@/lib/request-body';
 
 // PUT /api/admin/params/[id] — 更新参数
 export async function PUT(
@@ -14,7 +15,10 @@ export async function PUT(
   }
 
   const { id } = await params;
-  const body = await request.json();
+  const body = await safeParseBody(request);
+  if (!body) {
+    return NextResponse.json({ code: 400, msg: '请求参数格式错误' });
+  }
 
   const old = await prisma.sysParams.findUnique({ where: { id: BigInt(id) } });
   if (!old) {
