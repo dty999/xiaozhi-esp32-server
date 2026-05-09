@@ -48,8 +48,6 @@ export async function POST(request: NextRequest) {
         id: generateSnowflakeId(),
         macAddress: deviceId,
         isBound: 0,
-        agentId: BigInt(0),
-        userId: BigInt(0),
         appVersion: application?.version || null,
         chipInfo: chipInfo ? JSON.stringify(chipInfo) : null,
       },

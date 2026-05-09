@@ -47,8 +47,8 @@ export async function POST(request: NextRequest) {
   await prisma.aiDevice.update({
     where: { id: BigInt(deviceId) },
     data: {
-      agentId: BigInt(0),
-      userId: BigInt(0),
+      agentId: null,
+      userId: null,
       isBound: 0,
     },
   });

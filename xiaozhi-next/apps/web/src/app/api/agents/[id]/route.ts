@@ -201,7 +201,7 @@ export async function DELETE(
     // 1. 解除设备绑定（将设备 isBound 置 0，agentId 置 0）
     await tx.aiDevice.updateMany({
       where: { agentId },
-      data: { agentId: BigInt(0), isBound: 0 },
+      data: { agentId: null, isBound: 0 },
     });
     // 2. 删除聊天记录
     await tx.agentChatHistory.deleteMany({ where: { agentId } });

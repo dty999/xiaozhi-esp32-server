@@ -3,7 +3,7 @@
  * 角色配置页 — 智能体详情编辑
  *
  * 对标原 Vue 2 /role-config 页面。
- * 四个 Tab：基本信息 | 模型配置 | 语音合成 | 插件工具
+ * 六个 Tab：基本信息 | 模型配置 | 语音合成 | 插件工具 | 设备管理 | 声纹管理
  */
 
 import { useEffect, useState } from 'react';
@@ -16,6 +16,8 @@ import { AgentBasicInfo } from '@/components/features/AgentBasicInfo';
 import { ModelSelector } from '@/components/features/ModelSelector';
 import { TTSConfigPanel } from '@/components/features/TTSConfigPanel';
 import { PluginConfigPanel } from '@/components/features/PluginConfigPanel';
+import { AgentDevicesPanel } from '@/components/features/AgentDevicesPanel';
+import { AgentVoicePrintsPanel } from '@/components/features/AgentVoicePrintsPanel';
 import { useAuthStore } from '@/hooks/useAuth';
 
 export default function AgentConfigPage() {
@@ -77,22 +79,14 @@ export default function AgentConfigPage() {
         </Button>
       </div>
 
-      {/* 子页面快捷入口 */}
-      <div className="flex gap-2 mb-4">
-        <Button variant="outline" size="sm" onClick={() => router.push(`/agents/${params.id}/devices`)}>
-          设备管理
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => router.push(`/agents/${params.id}/voice-prints`)}>
-          声纹管理
-        </Button>
-      </div>
-
       <Tabs defaultValue="basic">
         <TabsList className="mb-6">
           <TabsTrigger value="basic">基本信息</TabsTrigger>
           <TabsTrigger value="models">模型配置</TabsTrigger>
           <TabsTrigger value="tts">语音合成</TabsTrigger>
           <TabsTrigger value="plugins">插件工具</TabsTrigger>
+          <TabsTrigger value="devices">设备管理</TabsTrigger>
+          <TabsTrigger value="voice-prints">声纹管理</TabsTrigger>
         </TabsList>
 
         <TabsContent value="basic">
@@ -106,6 +100,12 @@ export default function AgentConfigPage() {
         </TabsContent>
         <TabsContent value="plugins">
           <PluginConfigPanel agent={agent} onChange={setAgent} />
+        </TabsContent>
+        <TabsContent value="devices">
+          <AgentDevicesPanel agentId={params.id} />
+        </TabsContent>
+        <TabsContent value="voice-prints">
+          <AgentVoicePrintsPanel agentId={params.id} />
         </TabsContent>
       </Tabs>
     </div>

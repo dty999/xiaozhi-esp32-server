@@ -37,6 +37,11 @@ export async function POST(
     return NextResponse.json({ code: 404, msg: '设备不存在' });
   }
 
+  // 设备未绑定智能体，无工具可用
+  if (!device.agentId) {
+    return NextResponse.json({ code: 0, data: [] });
+  }
+
   // 通过设备关联的智能体获取插件列表
   const plugins = await prisma.agentPluginMapping.findMany({
     where: { agentId: device.agentId },

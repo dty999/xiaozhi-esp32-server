@@ -65,8 +65,6 @@ export async function POST(request: NextRequest) {
         chipInfo: chipInfo ? JSON.stringify(chipInfo) : null,
         activationCode,
         isBound: 0,
-        agentId: BigInt(0),
-        userId: BigInt(0),
       },
     });
   } else {

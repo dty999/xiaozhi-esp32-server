@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
     data: {
       id: generateSnowflakeId(),
       macAddress: body.macAddress,
-      agentId: body.agentId ? BigInt(body.agentId) : BigInt(0),
+      ...(body.agentId ? { agentId: BigInt(body.agentId) } : {}),
       userId,
       alias: body.alias || null,
       board: body.board || null,
