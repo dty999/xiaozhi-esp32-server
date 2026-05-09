@@ -47,8 +47,9 @@ export async function POST(
   // 调用 RAGFlow 召回测试
   try {
     const client = await createRAGFlowClient(kb.ragModelId);
+    // result 已是 RAGFlow 完整响应 { code, data }，直接透传
     const result = await client.retrievalTest(kb.datasetId, query, topK);
-    return NextResponse.json({ code: 0, data: result });
+    return NextResponse.json(result);
   } catch (e: any) {
     return NextResponse.json({ code: 500, msg: `召回测试失败: ${e.message}` }, { status: 500 });
   }

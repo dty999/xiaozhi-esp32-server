@@ -1,12 +1,10 @@
 /**
- * 文档管理 —— 列表 / 上传 / 解析 / 切片 / 召回测试
+ * 文档管理 —— 列表 / 上传 / 批量删除
  *
  * 对标 Java KnowledgeFilesController.java:
- *   GET  /datasets/{id}/documents               → GET  /api/knowledge/datasets/[id]/documents（列表）
- *   GET  /datasets/{id}/documents/status/{status} → GET  /api/knowledge/datasets/[id]/documents/status/[status]（按状态筛选）
- *   POST /datasets/{id}/documents               → POST /api/knowledge/datasets/[id]/documents（上传）
- *   POST /datasets/{id}/chunks                  → POST /api/knowledge/datasets/[id]/chunks（解析切块）
- *   GET  /datasets/{id}/retrieval-test           → POST /api/knowledge/datasets/[id]/retrieval-test（召回测试）
+ *   GET    /datasets/{id}/documents               → GET    /api/knowledge/datasets/[id]/documents（列表）
+ *   POST   /datasets/{id}/documents               → POST   /api/knowledge/datasets/[id]/documents（上传）
+ *   DELETE /datasets/{id}/documents               → DELETE /api/knowledge/datasets/[id]/documents（批量删除）
  *
  * @module knowledge/datasets/[id]/documents
  */
@@ -83,20 +81,25 @@ export async function POST(
 
   try {
     const formData = await request.formData();
-    const file = formData.get('file') as File;
+    const rawFile = formData.get('file');
 
-    if (!file || (!(file instanceof File) && !file?.name)) {
+    // FormDataEntryValue 可以是 string 或 File
+    if (!rawFile || typeof rawFile === 'string') {
       return NextResponse.json({ code: 400, msg: '请选择文件' });
     }
+
+    const fileName = rawFile.name || 'unknown';
+    const fileSize = rawFile.size || 0;
+    const fileType = rawFile.type || 'unknown';
 
     const client = await createRAGFlowClient(kb.ragModelId);
 
     let remoteDocId = '';
     let status = 'pending';
 
-    // 上传至 RAGFlow
+    // 上传至 RAGFlow（rawFile 在运行时即为 File/Blob 类型）
     try {
-      const result = await client.uploadDocument(kb.datasetId, file);
+      const result = await client.uploadDocument(kb.datasetId, rawFile as File);
       remoteDocId = result.data?.id || '';
       status = 'RUNNING';
     } catch {
@@ -110,9 +113,9 @@ export async function POST(
         id: generateSnowflakeId(),
         knowledgeBaseId: BigInt(id),
         documentId: remoteDocId || `local_${generateSnowflakeId().toString()}`,
-        name: file.name || 'unknown',
-        fileSize: BigInt(file.size),
-        fileType: file.type || 'unknown',
+        name: fileName || 'unknown',
+        fileSize: BigInt(fileSize),
+        fileType: fileType,
         status,
         creator: auth.payload!.userId,
       },
@@ -122,4 +125,64 @@ export async function POST(
   } catch (e: any) {
     return NextResponse.json({ code: 500, msg: `文档上传失败: ${e.message}` }, { status: 500 });
   }
+}
+
+// ─────────────────────────────────────────────
+// DELETE /api/knowledge/datasets/[id]/documents — 批量删除文档
+//   请求体：{ ids: string[] }
+// ─────────────────────────────────────────────
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = await authenticate('oauth2', request);
+  if (!auth.authenticated) {
+    return NextResponse.json({ code: 401, msg: auth.error }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const body = await safeParseBody(request);
+  if (!body || !body.ids || !Array.isArray(body.ids) || body.ids.length === 0) {
+    return NextResponse.json({ code: 400, msg: '请提供要删除的文档ID列表' });
+  }
+
+  const kb = await prisma.knowledgeBase.findUnique({ where: { id: BigInt(id) } });
+  if (!kb) {
+    return NextResponse.json({ code: 404, msg: '知识库不存在' });
+  }
+  if (kb.creator !== auth.payload!.userId && auth.payload!.superAdmin !== 1) {
+    return NextResponse.json({ code: 403, msg: '无权限' }, { status: 403 });
+  }
+
+  const ids = body.ids.map((id: string) => BigInt(id));
+
+  // 过滤出非 RUNNING 状态的文档才允许删除
+  const docs = await prisma.document.findMany({
+    where: { id: { in: ids } },
+  });
+
+  const runningDocs = docs.filter((d) => d.status === 'RUNNING');
+  if (runningDocs.length > 0) {
+    return NextResponse.json(
+      { code: 400, msg: `文档 ${runningDocs.length} 个正在解析中，无法删除` },
+      { status: 400 }
+    );
+  }
+
+  // 尝试调用 RAGFlow 删除远程文档
+  try {
+    const client = await createRAGFlowClient(kb.ragModelId);
+    for (const doc of docs) {
+      if (doc.documentId && !doc.documentId.startsWith('local_')) {
+        await client.deleteDocument(kb.datasetId, doc.documentId);
+      }
+    }
+  } catch {
+    // 容错：RAGFlow 不可用时仍删除本地记录
+  }
+
+  // 级联删除本地文档记录
+  await prisma.document.deleteMany({ where: { id: { in: ids } } });
+
+  return NextResponse.json({ code: 0, msg: `已删除 ${ids.length} 个文档` });
 }

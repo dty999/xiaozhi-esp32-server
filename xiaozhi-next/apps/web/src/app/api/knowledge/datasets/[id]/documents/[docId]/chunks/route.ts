@@ -41,8 +41,11 @@ export async function GET(
   // 从 RAGFlow 获取切片数据
   try {
     const client = await createRAGFlowClient(kb.ragModelId);
+    // RAGFlow 返回 { code, data: { chunks: [], total, ... } }
+    // 直接透传，保持原有结构
     const result = await client.listChunks(kb.datasetId, document.documentId, page, pageSize, keywords);
-    return NextResponse.json({ code: 0, data: result });
+    // result 本身已是 { code, data } 格式，直接返回
+    return NextResponse.json(result);
   } catch {
     // RAGFlow 不可用时返回空
     return NextResponse.json({

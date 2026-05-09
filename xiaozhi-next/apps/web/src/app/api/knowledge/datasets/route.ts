@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
   const mappedList = list.map(kb => ({
     id: kb.id.toString(),
     datasetId: kb.datasetId,
+    ragModelId: kb.ragModelId.toString(),
     name: kb.name,
     description: kb.description,
     embeddingModel: kb.embeddingModel,
