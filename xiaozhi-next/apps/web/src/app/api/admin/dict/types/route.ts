@@ -29,9 +29,11 @@ export async function GET(request: NextRequest) {
     }),
   ]);
 
+  const serialized = list.map(d => ({ ...d, id: d.id.toString(), creator: d.creator?.toString() ?? null }));
+
   return NextResponse.json({
     code: 0,
-    data: { total, page, limit, list },
+    data: { total, page, limit, list: serialized },
   });
 }
 
@@ -56,7 +58,7 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  return NextResponse.json({ code: 0, data: dictType });
+  return NextResponse.json({ code: 0, data: serializeType(dictType) });
 }
 
 // PUT /api/admin/dict/types — 修改字典类型
@@ -80,8 +82,10 @@ export async function PUT(request: NextRequest) {
     },
   });
 
-  return NextResponse.json({ code: 0, data: dictType });
+  return NextResponse.json({ code: 0, data: serializeType(dictType) });
 }
+
+function serializeType(t: any) { return { ...t, id: t.id.toString(), creator: t.creator?.toString() ?? null }; }
 
 // DELETE /api/admin/dict/types — 删除字典类型（含子数据）
 export async function DELETE(request: NextRequest) {

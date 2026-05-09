@@ -38,7 +38,23 @@ export async function GET(
     return NextResponse.json({ code: 404, msg: '模板不存在' });
   }
 
-  return NextResponse.json({ code: 0, data: template });
+  return NextResponse.json({
+    code: 0,
+    data: {
+      ...template,
+      id: template.id.toString(),
+      asrModelId: template.asrModelId?.toString() ?? null,
+      vadModelId: template.vadModelId?.toString() ?? null,
+      llmModelId: template.llmModelId?.toString() ?? null,
+      ttsModelId: template.ttsModelId?.toString() ?? null,
+      memModelId: template.memModelId?.toString() ?? null,
+      intentModelId: template.intentModelId?.toString() ?? null,
+      vllmModelId: template.vllmModelId?.toString() ?? null,
+      ttsVoiceId: template.ttsVoiceId?.toString() ?? null,
+      creator: template.creator?.toString() ?? null,
+      updater: template.updater?.toString() ?? null,
+    },
+  });
 }
 
 // ─────────────────────────────────────────────
@@ -83,7 +99,23 @@ export async function PUT(
     },
   });
 
-  return NextResponse.json({ code: 0, data: updated });
+  return NextResponse.json({
+    code: 0,
+    data: {
+      ...updated,
+      id: updated.id.toString(),
+      asrModelId: updated.asrModelId?.toString() ?? null,
+      vadModelId: updated.vadModelId?.toString() ?? null,
+      llmModelId: updated.llmModelId?.toString() ?? null,
+      ttsModelId: updated.ttsModelId?.toString() ?? null,
+      memModelId: updated.memModelId?.toString() ?? null,
+      intentModelId: updated.intentModelId?.toString() ?? null,
+      vllmModelId: updated.vllmModelId?.toString() ?? null,
+      ttsVoiceId: updated.ttsVoiceId?.toString() ?? null,
+      creator: updated.creator?.toString() ?? null,
+      updater: updated.updater?.toString() ?? null,
+    },
+  });
 }
 
 // ─────────────────────────────────────────────

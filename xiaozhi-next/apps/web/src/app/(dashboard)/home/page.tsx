@@ -15,8 +15,11 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, Settings, MessageSquare, Cpu } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Trash2, Settings, MessageSquare, Cpu, Loader2 } from 'lucide-react';
 import { ChatHistoryPanel } from '@/components/features/ChatHistoryPanel';
+import { AgentConfigDialog } from '@/components/features/AgentConfigDialog';
 import { useAuthStore } from '@/hooks/useAuth';
 
 interface Agent {
@@ -36,6 +39,8 @@ export default function HomePage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [configAgent, setConfigAgent] = useState<{ id: string; name: string } | null>(null);
 
   const authHeaders = { Authorization: `Bearer ${token}` };
 
@@ -49,10 +54,12 @@ export default function HomePage() {
 
   useEffect(() => { fetchAgents(); }, []);
 
-  const handleCreate = async () => {
+  const handleCreate = async (name: string, templateId?: string) => {
     try {
-      const res = await ofetch('/api/agents', { method: 'POST', body: { agentName: '新智能体' }, headers: authHeaders });
-      if (res.code === 0) router.push(`/agents/${res.data.agentId}`);
+      const body: any = { agentName: name || '新智能体' };
+      if (templateId) body.templateId = templateId;
+      const res = await ofetch('/api/agents', { method: 'POST', body, headers: authHeaders });
+      if (res.code === 0) { setDialogOpen(false); fetchAgents(); }
     } catch { /* 容错 */ }
   };
 
@@ -94,10 +101,18 @@ export default function HomePage() {
           我的智能体
           <Badge variant="secondary" className="ml-2">{agents.length}</Badge>
         </h1>
-        <Button onClick={handleCreate}>
-          <Plus size={16} className="mr-1" />
-          新建智能体
-        </Button>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button><Plus size={16} className="mr-1" />新建智能体</Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>新建智能体</DialogTitle></DialogHeader>
+            <CreateAgentForm
+              onCreate={handleCreate}
+              onCancel={() => setDialogOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* 搜索框 */}
@@ -114,7 +129,7 @@ export default function HomePage() {
           <Cpu size={48} className="mx-auto mb-4 opacity-20" />
           <p className="text-lg">{keyword ? '没有匹配的智能体' : '暂无智能体'}</p>
           {!keyword && (
-            <Button variant="outline" className="mt-4" onClick={handleCreate}>创建第一个智能体</Button>
+            <Button variant="outline" className="mt-4" onClick={() => setDialogOpen(true)}>创建第一个智能体</Button>
           )}
         </div>
       ) : (
@@ -155,7 +170,7 @@ export default function HomePage() {
 
                 {/* 操作按钮 */}
                 <div className="flex gap-2 pt-2">
-                  <Button size="sm" className="flex-1" onClick={() => router.push(`/agents/${agent.id}`)}>
+                  <Button size="sm" className="flex-1" onClick={() => setConfigAgent({ id: agent.id, name: agent.agentName })}>
                     <Settings size={14} className="mr-1" />配置
                   </Button>
                   <Dialog>
@@ -180,6 +195,65 @@ export default function HomePage() {
           ))}
         </div>
       )}
+
+      <AgentConfigDialog
+        open={!!configAgent}
+        agentId={configAgent?.id || ''}
+        agentName={configAgent?.name || ''}
+        onClose={() => setConfigAgent(null)}
+        onSaved={() => { setConfigAgent(null); fetchAgents(); }}
+      />
+    </div>
+  );
+}
+
+/** 新建智能体表单 — 支持选择模板 */
+function CreateAgentForm({ onCreate, onCancel }: { onCreate: (name: string, templateId?: string) => Promise<void>; onCancel: () => void }) {
+  const { token } = useAuthStore();
+  const [name, setName] = useState('新智能体');
+  const [templateId, setTemplateId] = useState('');
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [creating, setCreating] = useState(false);
+
+  useEffect(() => {
+    ofetch('/api/templates', { headers: { Authorization: `Bearer ${token}` } })
+      .then((res: any) => { if (res.code === 0) setTemplates(Array.isArray(res.data) ? res.data : res.data?.list || []); })
+      .catch(() => {});
+  }, []);
+
+  const handleSubmit = async () => {
+    setCreating(true);
+    const tid = !templateId || templateId === '_none' ? undefined : templateId;
+    await onCreate(name, tid);
+    setCreating(false);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1">
+        <Label>智能体名称</Label>
+        <Input value={name} onChange={e => setName(e.target.value)} placeholder="输入名称" />
+      </div>
+      <div className="space-y-1">
+        <Label>选择模板（可选）</Label>
+        <Select value={templateId} onValueChange={setTemplateId}>
+          <SelectTrigger><SelectValue placeholder="不使用模板，创建空白智能体" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="_none">不使用模板</SelectItem>
+            {templates.map((t: any) => (
+              <SelectItem key={t.id} value={t.id}>{t.agentName}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">选择模板后，智能体将自动配置模板中的模型和参数</p>
+      </div>
+      <div className="flex gap-2 pt-2">
+        <Button variant="outline" onClick={onCancel} className="flex-1">取消</Button>
+        <Button onClick={handleSubmit} disabled={creating || !name.trim()} className="flex-1">
+          {creating && <Loader2 className="animate-spin mr-2" size={14} />}
+          创建
+        </Button>
+      </div>
     </div>
   );
 }

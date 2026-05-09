@@ -22,7 +22,7 @@ export async function GET(
     return NextResponse.json({ code: 404, msg: '模型不存在' });
   }
 
-  return NextResponse.json({ code: 0, data: model });
+  return NextResponse.json({ code: 0, data: { ...model, id: model.id.toString() } });
 }
 
 // PUT /api/models/[param] — 更新模型
@@ -55,7 +55,7 @@ export async function PUT(
     },
   });
 
-  return NextResponse.json({ code: 0, data: model });
+  return NextResponse.json({ code: 0, data: { ...model, id: model.id.toString() } });
 }
 
 // DELETE /api/models/[param] — 删除模型

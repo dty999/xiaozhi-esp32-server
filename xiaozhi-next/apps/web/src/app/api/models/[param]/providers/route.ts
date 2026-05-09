@@ -19,5 +19,11 @@ export async function GET(
     orderBy: { sort: 'asc' },
   });
 
-  return NextResponse.json({ code: 0, data: providers });
+  const serialized = providers.map(p => ({
+    ...p,
+    id: p.id.toString(),
+    creator: p.creator?.toString() ?? null,
+    updater: p.updater?.toString() ?? null,
+  }));
+  return NextResponse.json({ code: 0, data: serialized });
 }

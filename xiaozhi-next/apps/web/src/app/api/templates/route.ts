@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    return NextResponse.json({ code: 0, data: { total, page, limit, list } });
+    return NextResponse.json({ code: 0, data: { total, page, limit, list: serializeTemplates(list) } });
   }
 
   // 普通用户：返回所有模板列表（按 sort 排序）
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     orderBy: { sort: 'asc' },
   });
 
-  return NextResponse.json({ code: 0, data: templates });
+  return NextResponse.json({ code: 0, data: serializeTemplates(templates) });
 }
 
 // ─────────────────────────────────────────────
@@ -104,7 +104,28 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  return NextResponse.json({ code: 0, data: template });
+  return NextResponse.json({ code: 0, data: serializeTemplate(template) });
+}
+
+function serializeTemplate(t: any) {
+  return {
+    ...t,
+    id: t.id.toString(),
+    asrModelId: t.asrModelId?.toString() ?? null,
+    vadModelId: t.vadModelId?.toString() ?? null,
+    llmModelId: t.llmModelId?.toString() ?? null,
+    ttsModelId: t.ttsModelId?.toString() ?? null,
+    memModelId: t.memModelId?.toString() ?? null,
+    intentModelId: t.intentModelId?.toString() ?? null,
+    vllmModelId: t.vllmModelId?.toString() ?? null,
+    ttsVoiceId: t.ttsVoiceId?.toString() ?? null,
+    creator: t.creator?.toString() ?? null,
+    updater: t.updater?.toString() ?? null,
+  };
+}
+
+function serializeTemplates(list: any[]) {
+  return list.map(serializeTemplate);
 }
 
 // ─────────────────────────────────────────────

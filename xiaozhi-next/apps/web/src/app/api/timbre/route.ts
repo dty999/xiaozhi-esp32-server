@@ -42,9 +42,17 @@ export async function GET(request: NextRequest) {
     }),
   ]);
 
+  const serializedList = list.map(v => ({
+    ...v,
+    id: v.id.toString(),
+    ttsModelId: v.ttsModelId.toString(),
+    creator: v.creator?.toString() ?? null,
+    updater: v.updater?.toString() ?? null,
+  }));
+
   return NextResponse.json({
     code: 0,
-    data: { total, page, limit, list },
+    data: { total, page, limit, list: serializedList },
   });
 }
 
@@ -78,7 +86,16 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  return NextResponse.json({ code: 0, data: voice });
+  return NextResponse.json({
+    code: 0,
+    data: {
+      ...voice,
+      id: voice.id.toString(),
+      ttsModelId: voice.ttsModelId.toString(),
+      creator: voice.creator?.toString() ?? null,
+      updater: voice.updater?.toString() ?? null,
+    },
+  });
 }
 
 // ─────────────────────────────────────────────

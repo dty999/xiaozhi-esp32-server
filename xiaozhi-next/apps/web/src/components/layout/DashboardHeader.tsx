@@ -21,7 +21,7 @@ export function DashboardHeader() {
           className="text-lg font-bold cursor-pointer text-primary"
           onClick={() => router.push('/home')}
         >
-          小智智控台
+          控制台
         </h1>
       </div>
 

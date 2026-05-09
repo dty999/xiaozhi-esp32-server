@@ -4,9 +4,11 @@
  *
  * 对标原 Vue 2 /model-config 页面。
  * 左侧模型类型切换，右侧数据表格，支持增删改。
+ * 新增/编辑时，根据选择的供应器动态渲染配置表单。
  */
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { ofetch } from 'ofetch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,9 +18,32 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Pencil, Trash2, Check, X } from 'lucide-react';
+import { useAuthStore } from '@/hooks/useAuth';
 
 const MODEL_TYPES = ['ASR', 'VAD', 'LLM', 'TTS', 'Memory', 'Intent', 'VLLM', 'SLM'] as const;
 
+/** 字段定义（对应 ModelProvider.fields 的 JSON Schema） */
+interface FieldSchema {
+  type: 'string' | 'number' | 'boolean';
+  label: string;
+  placeholder?: string;
+  default?: any;
+  required?: boolean;
+  secret?: boolean; // 是否加密显示
+  options?: { label: string; value: string }[]; // 下拉选项
+}
+
+/** 供应器 */
+interface Provider {
+  id: string;
+  providerCode: string;
+  name: string;
+  modelType: string;
+  fields: Record<string, FieldSchema> | null;
+  sort: number;
+}
+
+/** 模型配置 */
 interface ModelConfig {
   id: string;
   modelType: string;
@@ -32,47 +57,49 @@ interface ModelConfig {
 }
 
 export default function ModelsPage() {
+  const { token } = useAuthStore();
   const [activeType, setActiveType] = useState<string>('LLM');
   const [models, setModels] = useState<ModelConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<ModelConfig | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  const authHeaders = { Authorization: `Bearer ${token}` };
+
   const fetchModels = async () => {
     setLoading(true);
     try {
-      const res = await ofetch(`/api/models?modelType=${activeType}&limit=100`);
+      const res = await ofetch(`/api/models?modelType=${activeType}&limit=100`, { headers: authHeaders });
       if (res.code === 0) setModels(res.data.list || []);
     } catch { /* 容错 */ }
     setLoading(false);
   };
 
-  useEffect(() => { fetchModels(); // eslint-disable-next-line
-  }, [activeType]);
+  useEffect(() => { fetchModels(); }, [activeType, token]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('确定删除？')) return;
-    try { await ofetch(`/api/models/${id}`, { method: 'DELETE' }); fetchModels(); } catch { /* */ }
+    try { await ofetch(`/api/models/${id}`, { method: 'DELETE', headers: authHeaders }); fetchModels(); } catch { /* */ }
   };
 
   const handleToggleDefault = async (id: string) => {
-    try { await ofetch(`/api/models/${id}/default`, { method: 'PUT' }); fetchModels(); } catch { /* */ }
+    try { await ofetch(`/api/models/${id}/default`, { method: 'PUT', headers: authHeaders }); fetchModels(); } catch { /* */ }
   };
 
   const handleToggleEnabled = async (id: string, current: number) => {
     const newStatus = current === 1 ? 0 : 1;
-    try { await ofetch(`/api/models/${id}/enable/${newStatus}`, { method: 'PUT' }); fetchModels(); } catch { /* */ }
+    try { await ofetch(`/api/models/${id}/enable/${newStatus}`, { method: 'PUT', headers: authHeaders }); fetchModels(); } catch { /* */ }
   };
 
   return (
     <div className="max-w-6xl">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">模型配置</h1>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditing(null); }}>
           <DialogTrigger asChild>
             <Button><Plus size={16} className="mr-1" />新增模型</Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editing ? '编辑模型' : '新增模型'}</DialogTitle></DialogHeader>
             <ModelForm
               initial={editing}
@@ -145,36 +172,151 @@ export default function ModelsPage() {
 
 /** 模型编辑表单 */
 function ModelForm({ initial, modelType, onSuccess }: { initial: any; modelType: string; onSuccess: () => void }) {
-  const [form, setForm] = useState({
+  const { token } = useAuthStore();
+  const authHeaders = { Authorization: `Bearer ${token}` };
+
+  const [basicInfo, setBasicInfo] = useState({
     modelCode: initial?.modelCode || '',
     modelName: initial?.modelName || '',
-    configJson: initial?.configJson ? JSON.stringify(initial.configJson, null, 2) : '',
     docLink: initial?.docLink || '',
     remark: initial?.remark || '',
     isDefault: initial?.isDefault || 0,
     isEnabled: initial?.isEnabled ?? 1,
   });
 
-  const handleSubmit = async () => {
-    const body = { ...form, modelType, configJson: form.configJson ? JSON.parse(form.configJson) : null };
-    if (initial?.id) {
-      await ofetch(`/api/models/${modelType}/${initial.modelCode}/${initial.id}`, { method: 'PUT', body });
+  // 配置 JSON（直接编辑文本）
+  const [configJsonText, setConfigJsonText] = useState(
+    initial?.configJson ? JSON.stringify(initial.configJson, null, 2) : ''
+  );
+
+  // 供应器相关
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [loadingProviders, setLoadingProviders] = useState(false);
+
+  // 加载供应器列表
+  useEffect(() => {
+    setLoadingProviders(true);
+    ofetch(`/api/models/${modelType}/providers`, { headers: authHeaders })
+      .then((res: any) => { if (res.code === 0) setProviders(res.data || []); })
+      .catch(() => {})
+      .finally(() => setLoadingProviders(false));
+  }, [modelType]);
+
+  // 编辑/新增时同步
+  useEffect(() => {
+    if (initial) {
+      setBasicInfo({
+        modelCode: initial.modelCode || '',
+        modelName: initial.modelName || '',
+        docLink: initial.docLink || '',
+        remark: initial.remark || '',
+        isDefault: initial.isDefault || 0,
+        isEnabled: initial.isEnabled ?? 1,
+      });
+      setConfigJsonText(initial.configJson ? JSON.stringify(initial.configJson, null, 2) : '');
     } else {
-      await ofetch(`/api/models/${modelType}/${form.modelCode}`, { method: 'POST', body });
+      setBasicInfo({ modelCode: '', modelName: '', docLink: '', remark: '', isDefault: 0, isEnabled: 1 });
+      setConfigJsonText('');
     }
-    onSuccess();
+  }, [initial]);
+
+  // 选择供应器时，自动填充 fields JSON
+  const handleProviderChange = (providerId: string) => {
+    const provider = providers.find(p => p.id === providerId);
+    if (provider?.fields) {
+      const fieldsObj = typeof provider.fields === 'string' ? JSON.parse(provider.fields) : provider.fields;
+      setConfigJsonText(JSON.stringify(fieldsObj, null, 2));
+      // 自动补全 modelCode
+      if (basicInfo.modelCode && !basicInfo.modelCode.includes('/')) {
+        setBasicInfo(prev => ({ ...prev, modelCode: `${provider.providerCode}/${prev.modelCode}` }));
+      }
+    }
+  };
+
+  const handleSubmit = async () => {
+    let configJson = null;
+    if (configJsonText.trim()) {
+      try { configJson = JSON.parse(configJsonText); } catch { alert('配置 JSON 格式错误，请检查'); return; }
+    }
+
+    const body = { ...basicInfo, modelType, configJson };
+
+    try {
+      if (initial?.id) {
+        await ofetch(`/api/models/${initial.id}`, { method: 'PUT', body, headers: authHeaders });
+      } else {
+        await ofetch('/api/models', { method: 'POST', body, headers: authHeaders });
+      }
+      onSuccess();
+    } catch { /* */ }
   };
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1"><Label>模型编码</Label><Input value={form.modelCode} onChange={e => setForm({...form, modelCode: e.target.value})} /></div>
-      <div className="space-y-1"><Label>模型名称</Label><Input value={form.modelName} onChange={e => setForm({...form, modelName: e.target.value})} /></div>
-      <div className="space-y-1"><Label>文档链接</Label><Input value={form.docLink} onChange={e => setForm({...form, docLink: e.target.value})} /></div>
-      <div className="space-y-1"><Label>配置 JSON</Label><Textarea value={form.configJson} onChange={e => setForm({...form, configJson: e.target.value})} rows={5} className="font-mono text-xs" /></div>
-      <div className="flex gap-2">
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.isDefault === 1} onChange={e => setForm({...form, isDefault: e.target.checked ? 1 : 0})} /> 设为默认</label>
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.isEnabled === 1} onChange={e => setForm({...form, isEnabled: e.target.checked ? 1 : 0})} /> 启用</label>
+      <div className="space-y-1">
+        <Label>模型编码</Label>
+        <Input value={basicInfo.modelCode} onChange={e => setBasicInfo({...basicInfo, modelCode: e.target.value})} placeholder="如 openai/gpt-4o-mini" />
       </div>
+      <div className="space-y-1">
+        <Label>模型名称</Label>
+        <Input value={basicInfo.modelName} onChange={e => setBasicInfo({...basicInfo, modelName: e.target.value})} placeholder="显示名称" />
+      </div>
+
+      {/* 供应器选择（新增模式） */}
+      {!initial && (
+        <div className="space-y-1">
+          <Label>供应器</Label>
+          {loadingProviders ? (
+            <p className="text-sm text-muted-foreground">加载中...</p>
+          ) : providers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              暂无可用供应器，请先去 <Link href="/providers" className="text-blue-500 hover:underline">供应器管理</Link> 添加
+            </p>
+          ) : (
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
+              value=""
+              onChange={e => handleProviderChange(e.target.value)}
+            >
+              <option value="">请选择供应器</option>
+              {providers.map(p => (
+                <option key={p.id} value={p.id}>{p.name} ({p.providerCode})</option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
+
+      {/* 配置 JSON 文本域 */}
+      <div className="space-y-1">
+        <Label>配置 JSON</Label>
+        <Textarea
+          value={configJsonText}
+          onChange={e => setConfigJsonText(e.target.value)}
+          rows={8}
+          className="font-mono text-xs"
+          placeholder='{"api_key": "sk-xxx", "api_url": "https://..."}'
+        />
+      </div>
+
+      <div className="space-y-1">
+        <Label>文档链接</Label>
+        <Input value={basicInfo.docLink} onChange={e => setBasicInfo({...basicInfo, docLink: e.target.value})} placeholder="可选" />
+      </div>
+      <div className="space-y-1">
+        <Label>备注</Label>
+        <Textarea value={basicInfo.remark} onChange={e => setBasicInfo({...basicInfo, remark: e.target.value})} rows={2} placeholder="可选" />
+      </div>
+
+      <div className="flex gap-4">
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={basicInfo.isDefault === 1} onChange={e => setBasicInfo({...basicInfo, isDefault: e.target.checked ? 1 : 0})} /> 设为默认
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={basicInfo.isEnabled === 1} onChange={e => setBasicInfo({...basicInfo, isEnabled: e.target.checked ? 1 : 0})} /> 启用
+        </label>
+      </div>
+
       <Button onClick={handleSubmit} className="w-full">保存</Button>
     </div>
   );

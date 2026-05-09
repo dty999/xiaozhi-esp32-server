@@ -295,8 +295,8 @@ export default {
   'settings.restartNow': '立即重启',
   'settings.restartLater': '稍后',
   // 关于我们
-  'settings.aboutApp': '关于小智智控台',
-  'settings.aboutContent': '小智智控台\n\n基于 Vue.js 3 + uni-app 构建的跨平台移动端管理应用，为小智ESP32智能硬件提供设备管理、智能体配置等功能。\n\n© 2025 xiaozhi-esp32-server {version}',
+  'settings.aboutApp': '关于控制台',
+  'settings.aboutContent': '控制台\n\n基于 Vue.js 3 + uni-app 构建的跨平台移动端管理应用，为小智ESP32智能硬件提供设备管理、智能体配置等功能。\n\n© 2025 xiaozhi-esp32-server {version}',
   'settings.restartSuccess': '已保存，可稍后手动重启应用',
   'settings.serverUrlSavedAndCacheCleared': '服务端地址已保存，缓存已清除',
   'settings.resetToDefaultAndCacheCleared': '已恢复默认设置，缓存已清除',

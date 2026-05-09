@@ -33,9 +33,16 @@ export async function GET(request: NextRequest) {
     }),
   ]);
 
+  const serialized = list.map(d => ({
+    ...d,
+    id: d.id.toString(),
+    dictTypeId: d.dictTypeId.toString(),
+    dictType: d.dictType ? { ...d.dictType, id: d.dictType.id.toString() } : null,
+  }));
+
   return NextResponse.json({
     code: 0,
-    data: { total, page, limit, list },
+    data: { total, page, limit, list: serialized },
   });
 }
 
@@ -67,7 +74,7 @@ export async function POST(request: NextRequest) {
     await cache.del(`sys:dict:data:${dictType.dictType}`);
   }
 
-  return NextResponse.json({ code: 0, data });
+  return NextResponse.json({ code: 0, data: serializeData(data) });
 }
 
 // PUT /api/admin/dict/data — 修改字典数据
@@ -97,8 +104,10 @@ export async function PUT(request: NextRequest) {
     await cache.del(`sys:dict:data:${dictType.dictType}`);
   }
 
-  return NextResponse.json({ code: 0, data });
+  return NextResponse.json({ code: 0, data: serializeData(data) });
 }
+
+function serializeData(d: any) { return { ...d, id: d.id.toString(), dictTypeId: d.dictTypeId.toString() }; }
 
 // DELETE /api/admin/dict/data — 删除字典数据
 export async function DELETE(request: NextRequest) {

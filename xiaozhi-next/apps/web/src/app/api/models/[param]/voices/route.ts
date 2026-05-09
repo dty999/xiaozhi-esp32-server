@@ -19,5 +19,6 @@ export async function GET(
     orderBy: { sort: 'asc' },
   });
 
-  return NextResponse.json({ code: 0, data: voices });
+  const serialized = voices.map(v => ({ ...v, id: v.id.toString(), ttsModelId: v.ttsModelId.toString() }));
+  return NextResponse.json({ code: 0, data: serialized });
 }

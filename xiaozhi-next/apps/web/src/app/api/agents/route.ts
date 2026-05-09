@@ -122,26 +122,50 @@ export async function POST(request: NextRequest) {
   const userId = auth.payload!.userId;
   const agentId = generateSnowflakeId();
 
+  // 如果指定了模板，加载模板配置作为默认值
+  let templateDefaults: any = {};
+  if (body.templateId) {
+    const tmpl = await prisma.aiAgentTemplate.findUnique({ where: { id: BigInt(body.templateId) } });
+    if (tmpl) {
+      templateDefaults = {
+        asrModelId: tmpl.asrModelId,
+        vadModelId: tmpl.vadModelId,
+        llmModelId: tmpl.llmModelId,
+        ttsModelId: tmpl.ttsModelId,
+        memModelId: tmpl.memModelId,
+        intentModelId: tmpl.intentModelId,
+        vllmModelId: tmpl.vllmModelId,
+        ttsVoiceId: tmpl.ttsVoiceId,
+        ttsLanguage: tmpl.ttsLanguage,
+        ttsVolume: tmpl.ttsVolume,
+        ttsRate: tmpl.ttsRate,
+        ttsPitch: tmpl.ttsPitch,
+        systemPrompt: tmpl.systemPrompt,
+        functions: tmpl.functions,
+      };
+    }
+  }
+
   const agent = await prisma.aiAgent.create({
     data: {
       id: agentId,
       agentCode: body.agentCode || `agent_${Date.now()}`,
       agentName: body.agentName || '新智能体',
-      asrModelId: body.asrModelId ? BigInt(body.asrModelId) : null,
-      vadModelId: body.vadModelId ? BigInt(body.vadModelId) : null,
-      llmModelId: body.llmModelId ? BigInt(body.llmModelId) : null,
-      ttsModelId: body.ttsModelId ? BigInt(body.ttsModelId) : null,
-      memModelId: body.memModelId ? BigInt(body.memModelId) : null,
-      intentModelId: body.intentModelId ? BigInt(body.intentModelId) : null,
-      vllmModelId: body.vllmModelId ? BigInt(body.vllmModelId) : null,
-      slmModelId: body.slmModelId ? BigInt(body.slmModelId) : null,
-      ttsVoiceId: body.ttsVoiceId ? BigInt(body.ttsVoiceId) : null,
-      ttsLanguage: body.ttsLanguage || null,
-      ttsVolume: body.ttsVolume ?? null,
-      ttsRate: body.ttsRate ?? null,
-      ttsPitch: body.ttsPitch ?? null,
-      systemPrompt: body.systemPrompt || '',
-      functions: body.functions || null,
+      asrModelId: body.asrModelId ?? templateDefaults.asrModelId ?? null,
+      vadModelId: body.vadModelId ?? templateDefaults.vadModelId ?? null,
+      llmModelId: body.llmModelId ?? templateDefaults.llmModelId ?? null,
+      ttsModelId: body.ttsModelId ?? templateDefaults.ttsModelId ?? null,
+      memModelId: body.memModelId ?? templateDefaults.memModelId ?? null,
+      intentModelId: body.intentModelId ?? templateDefaults.intentModelId ?? null,
+      vllmModelId: body.vllmModelId ?? templateDefaults.vllmModelId ?? null,
+      slmModelId: body.slmModelId ?? null,
+      ttsVoiceId: body.ttsVoiceId ?? templateDefaults.ttsVoiceId ?? null,
+      ttsLanguage: body.ttsLanguage ?? templateDefaults.ttsLanguage ?? null,
+      ttsVolume: body.ttsVolume ?? templateDefaults.ttsVolume ?? null,
+      ttsRate: body.ttsRate ?? templateDefaults.ttsRate ?? null,
+      ttsPitch: body.ttsPitch ?? templateDefaults.ttsPitch ?? null,
+      systemPrompt: body.systemPrompt ?? templateDefaults.systemPrompt ?? '',
+      functions: body.functions ?? templateDefaults.functions ?? null,
       sort: body.sort || 0,
       userId,
     },

@@ -100,7 +100,7 @@ export default function LoginPage() {
   return (
     <Card className="shadow-lg">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl">小智智控台</CardTitle>
+        <CardTitle className="text-2xl">控制台</CardTitle>
         <p className="text-sm text-muted-foreground mt-1">ESP32 AI 智能体管理</p>
       </CardHeader>
       <CardContent className="space-y-4">

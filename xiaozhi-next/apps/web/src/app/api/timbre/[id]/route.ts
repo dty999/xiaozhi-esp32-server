@@ -31,7 +31,16 @@ export async function GET(
     return NextResponse.json({ code: 404, msg: '音色不存在' });
   }
 
-  return NextResponse.json({ code: 0, data: voice });
+  return NextResponse.json({
+    code: 0,
+    data: {
+      ...voice,
+      id: voice.id.toString(),
+      ttsModelId: voice.ttsModelId.toString(),
+      creator: voice.creator?.toString() ?? null,
+      updater: voice.updater?.toString() ?? null,
+    },
+  });
 }
 
 // PUT /api/timbre/[id] — 更新音色（如已有则复用 PUT）
@@ -68,4 +77,23 @@ export async function PUT(
   });
 
   return NextResponse.json({ code: 0, msg: '音色已更新' });
+}
+
+// DELETE /api/timbre/[id] — 删除音色
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = await authenticate('oauth2', request);
+  if (!auth.authenticated || auth.payload?.superAdmin !== 1) {
+    return NextResponse.json({ code: 403, msg: '无权限' }, { status: 403 });
+  }
+
+  const { id } = await params;
+
+  await prisma.aiTtsVoice.delete({
+    where: { id: BigInt(id) },
+  });
+
+  return NextResponse.json({ code: 0, msg: '音色已删除' });
 }

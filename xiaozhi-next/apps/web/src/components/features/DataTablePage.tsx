@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ofetch } from 'ofetch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,18 +23,37 @@ export interface TableCol {
   render?: (val: any, row: any) => React.ReactNode;
 }
 
+/** 表单字段类型 */
+export type FormFieldType = 'text' | 'textarea' | 'number' | 'select';
+
+/** 表单字段定义 */
+export interface FormField {
+  key: string;
+  label: string;
+  type?: FormFieldType;
+  placeholder?: string;
+  options?: { label: string; value: string | number }[];
+  /** 提交时的值类型：string | number，默认为 string */
+  valueType?: 'string' | 'number';
+}
+
 interface DataTableProps {
   title: string;
   apiBase: string;
   columns: TableCol[];
   searchPlaceholder?: string;
-  formFields?: { key: string; label: string; type?: 'text' | 'textarea' }[];
+  formFields?: FormField[];
   rowActions?: (row: any, refresh: () => void) => React.ReactNode;
+  /** 创建成功后的回调，参数为创建后的数据 */
+  onCreated?: (row: any) => void;
+  /** 详情页 URL 模式，{id} 会被替换为行 ID。设置后编辑按钮点击跳转到详情页 */
+  detailUrl?: string;
 }
 
 export function DataTablePage({
-  title, apiBase, columns, searchPlaceholder = '搜索...', formFields, rowActions,
+  title, apiBase, columns, searchPlaceholder = '搜索...', formFields, rowActions, onCreated, detailUrl,
 }: DataTableProps) {
+  const router = useRouter();
   const { token } = useAuthStore();
   const [data, setData] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
@@ -74,7 +94,7 @@ export function DataTablePage({
           </Button>
           <DialogContent>
             <DialogHeader><DialogTitle>{editing ? '编辑' : '新增'}{title}</DialogTitle></DialogHeader>
-            <CrudForm fields={formFields || []} editing={editing} apiBase={apiBase} onSuccess={() => { setDialogOpen(false); fetchData(); }} />
+            <CrudForm fields={formFields || []} editing={editing} apiBase={apiBase} onSuccess={(result: any) => { setDialogOpen(false); fetchData(); if (onCreated && !editing && result) { onCreated(result); } }} />
           </DialogContent>
         </Dialog>
       </div>
@@ -100,7 +120,10 @@ export function DataTablePage({
                   <div className="flex gap-1 ml-4 flex-shrink-0">
                     {rowActions ? rowActions(row, fetchData) : (
                       <>
-                        <Button size="sm" variant="ghost" onClick={() => { setEditing(row); setDialogOpen(true); }}>
+                        <Button size="sm" variant="ghost" onClick={() => {
+                          if (detailUrl) { router.push(detailUrl.replace('{id}', row.id)); }
+                          else { setEditing(row); setDialogOpen(true); }
+                        }}>
                           <Pencil size={14} />
                         </Button>
                         <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(row.id)}>
@@ -133,7 +156,7 @@ export function DataTablePage({
 }
 
 /** 通用表单 */
-function CrudForm({ fields, editing, apiBase, onSuccess }: { fields: { key: string; label: string; type?: string }[]; editing: any; apiBase: string; onSuccess: () => void }) {
+function CrudForm({ fields, editing, apiBase, onSuccess }: { fields: FormField[]; editing: any; apiBase: string; onSuccess: (result?: any) => void }) {
   const { token } = useAuthStore();
   const [form, setForm] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -143,7 +166,16 @@ function CrudForm({ fields, editing, apiBase, onSuccess }: { fields: { key: stri
   useEffect(() => {
     if (editing) {
       const init: Record<string, string> = {};
-      fields.forEach(f => { init[f.key] = editing[f.key]?.toString() || ''; });
+      fields.forEach(f => {
+        const raw = editing[f.key];
+        if (raw === null || raw === undefined) {
+          init[f.key] = '';
+        } else if (typeof raw === 'object') {
+          init[f.key] = JSON.stringify(raw);
+        } else {
+          init[f.key] = String(raw);
+        }
+      });
       setForm(init);
     } else {
       const init: Record<string, string> = {};
@@ -152,15 +184,28 @@ function CrudForm({ fields, editing, apiBase, onSuccess }: { fields: { key: stri
     }
   }, [editing, fields]);
 
+  /** 根据字段类型转换表单值后提交 */
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      // 根据 valueType 转换值
+      const body: Record<string, any> = {};
+      fields.forEach(f => {
+        const raw = form[f.key];
+        if (f.valueType === 'number') {
+          body[f.key] = raw === '' ? null : Number(raw);
+        } else {
+          body[f.key] = raw;
+        }
+      });
+
+      let result: any = null;
       if (editing?.id) {
-        await ofetch(`${apiBase}/${editing.id}`, { method: 'PUT', body: form, headers: authHeaders });
+        await ofetch(`${apiBase}/${editing.id}`, { method: 'PUT', body, headers: authHeaders });
       } else {
-        await ofetch(apiBase, { method: 'POST', body: form, headers: authHeaders });
+        result = await ofetch(apiBase, { method: 'POST', body, headers: authHeaders });
       }
-      onSuccess();
+      onSuccess(result);
     } catch { /* 容错 */ }
     setLoading(false);
   };
@@ -171,9 +216,37 @@ function CrudForm({ fields, editing, apiBase, onSuccess }: { fields: { key: stri
         <div key={f.key} className="space-y-1">
           <Label>{f.label}</Label>
           {f.type === 'textarea' ? (
-            <textarea className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm" value={form[f.key] || ''} onChange={e => setForm({...form, [f.key]: e.target.value})} rows={3} />
+            <textarea
+              className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
+              value={form[f.key] || ''}
+              onChange={e => setForm({ ...form, [f.key]: e.target.value })}
+              placeholder={f.placeholder}
+              rows={3}
+            />
+          ) : f.type === 'select' ? (
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
+              value={form[f.key] || ''}
+              onChange={e => setForm({ ...form, [f.key]: e.target.value })}
+            >
+              <option value="">{f.placeholder || '请选择'}</option>
+              {f.options?.map(opt => (
+                <option key={opt.value} value={String(opt.value)}>{opt.label}</option>
+              ))}
+            </select>
+          ) : f.type === 'number' ? (
+            <Input
+              type="number"
+              value={form[f.key] || ''}
+              onChange={e => setForm({ ...form, [f.key]: e.target.value })}
+              placeholder={f.placeholder}
+            />
           ) : (
-            <Input value={form[f.key] || ''} onChange={e => setForm({...form, [f.key]: e.target.value})} />
+            <Input
+              value={form[f.key] || ''}
+              onChange={e => setForm({ ...form, [f.key]: e.target.value })}
+              placeholder={f.placeholder}
+            />
           )}
         </div>
       ))}

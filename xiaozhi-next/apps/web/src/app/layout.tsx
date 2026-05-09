@@ -4,7 +4,7 @@ import { getLocale, getMessages } from 'next-intl/server';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: '小智智控台',
+  title: '控制台',
   description: 'XiaoZhi ESP32 Server — AI 智能体管理控制台',
 };
 

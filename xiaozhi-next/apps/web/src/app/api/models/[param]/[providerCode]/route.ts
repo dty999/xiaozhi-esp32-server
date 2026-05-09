@@ -24,7 +24,8 @@ export async function GET(
     orderBy: { sort: 'asc' },
   });
 
-  return NextResponse.json({ code: 0, data: models });
+  const serialized = models.map(m => ({ ...m, id: m.id.toString() }));
+  return NextResponse.json({ code: 0, data: serialized });
 }
 
 // POST /api/models/[param]/[providerCode] — 新增模型（param 为模型类型）
@@ -58,5 +59,5 @@ export async function POST(
     },
   });
 
-  return NextResponse.json({ code: 0, data: model });
+  return NextResponse.json({ code: 0, data: { ...model, id: model.id.toString() } });
 }
