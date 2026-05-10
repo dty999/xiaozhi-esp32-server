@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
 import { safeParseBody } from '@/lib/request-body';
+import { serializeBigInt } from '@/lib/serialize';
 
 // ─────────────────────────────────────────────
 // GET /api/ota/mag/[id] — 固件详情
@@ -35,7 +36,7 @@ export async function GET(
     return NextResponse.json({ code: 404, msg: '固件不存在' });
   }
 
-  return NextResponse.json({ code: 0, data: firmware });
+  return NextResponse.json({ code: 0, data: serializeBigInt(firmware) });
 }
 
 // ─────────────────────────────────────────────
@@ -71,7 +72,7 @@ export async function PUT(
     },
   });
 
-  return NextResponse.json({ code: 0, data: updated });
+  return NextResponse.json({ code: 0, data: serializeBigInt(updated) });
 }
 
 // ─────────────────────────────────────────────

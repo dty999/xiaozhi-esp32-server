@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
+import { serializeBigInt } from '@/lib/serialize';
 
 // GET /api/admin/dict/types/[id] — 字典类型详情
 export async function GET(
@@ -29,7 +30,7 @@ export async function GET(
     return NextResponse.json({ code: 404, msg: '字典类型不存在' });
   }
 
-  return NextResponse.json({ code: 0, data: dictType });
+  return NextResponse.json({ code: 0, data: serializeBigInt(dictType) });
 }
 
 // PUT /api/admin/dict/types/[id] — 更新字典类型

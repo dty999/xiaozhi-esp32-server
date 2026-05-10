@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
+import { serializeBigInt } from '@/lib/serialize';
 
 // GET /api/models/names — 模型名称列表（供前端下拉选择）
 export async function GET(request: NextRequest) {
@@ -29,5 +30,5 @@ export async function GET(request: NextRequest) {
     orderBy: { sort: 'asc' },
   });
 
-  return NextResponse.json({ code: 0, data: models });
+  return NextResponse.json({ code: 0, data: serializeBigInt(models) });
 }

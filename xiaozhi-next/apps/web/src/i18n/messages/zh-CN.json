@@ -90,5 +90,63 @@
     "version": "版本",
     "type": "类型",
     "fileSize": "文件大小"
+  },
+  "voice": {
+    "resource": {
+      "title": "音色资源",
+      "add": "新增音色资源",
+      "name": "名称",
+      "voiceId": "声音ID",
+      "user": "用户",
+      "platform": "平台",
+      "languages": "语言",
+      "status": "状态",
+      "createdAt": "创建时间",
+      "selectUser": "选择用户",
+      "searchUser": "搜索用户",
+      "selectPlatform": "选择平台"
+    },
+    "clone": {
+      "title": "声音克隆",
+      "upload": "上传音频",
+      "play": "播放",
+      "stop": "停止",
+      "train": "训练",
+      "retrain": "重新训练",
+      "edit": "编辑",
+      "delete": "删除",
+      "status": {
+        "untrained": "未训练",
+        "training": "训练中",
+        "success": "训练成功",
+        "failed": "训练失败"
+      },
+      "noAudio": "未上传音频",
+      "hasAudio": "已上传音频",
+      "searchPlaceholder": "搜索名称..."
+    },
+    "timbre": {
+      "title": "音色管理",
+      "add": "新增音色",
+      "edit": "编辑音色",
+      "name": "音色名称",
+      "ttsModel": "TTS模型",
+      "voiceCode": "音色代码",
+      "languages": "语言",
+      "sort": "排序",
+      "voiceDemo": "演示音频",
+      "referenceAudio": "参考音频",
+      "referenceText": "参考文本",
+      "remark": "备注"
+    },
+    "print": {
+      "title": "声纹管理",
+      "add": "新增声纹",
+      "edit": "编辑声纹",
+      "name": "名称",
+      "description": "描述",
+      "audioVector": "音频向量",
+      "selectAudio": "选择音频"
+    }
   }
 }

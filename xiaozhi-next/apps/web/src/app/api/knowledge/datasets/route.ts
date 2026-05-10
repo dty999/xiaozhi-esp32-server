@@ -15,6 +15,7 @@ import { prisma } from '@/lib/db';
 import { generateSnowflakeId } from '@/lib/snowflake';
 import { safeParseBody } from '@/lib/request-body';
 import { createRAGFlowClient } from '@/lib/ragflow-factory';
+import { serializeBigInt } from '@/lib/serialize';
 
 // ─────────────────────────────────────────────
 // GET /api/knowledge/datasets — 分页查询知识库
@@ -126,7 +127,7 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  return NextResponse.json({ code: 0, data: knowledgeBase });
+  return NextResponse.json({ code: 0, data: serializeBigInt(knowledgeBase) });
 }
 
 // ─────────────────────────────────────────────

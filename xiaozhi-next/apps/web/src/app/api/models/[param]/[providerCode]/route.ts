@@ -3,6 +3,7 @@ import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
 import { generateSnowflakeId } from '@/lib/snowflake';
 import { safeParseBody } from '@/lib/request-body';
+import { serializeBigInt } from '@/lib/serialize';
 
 // GET /api/models/[param]/[providerCode] — 获取某供应商下的模型列表（param 为模型类型）
 export async function GET(
@@ -24,8 +25,7 @@ export async function GET(
     orderBy: { sort: 'asc' },
   });
 
-  const serialized = models.map(m => ({ ...m, id: m.id.toString() }));
-  return NextResponse.json({ code: 0, data: serialized });
+  return NextResponse.json({ code: 0, data: serializeBigInt(models) });
 }
 
 // POST /api/models/[param]/[providerCode] — 新增模型（param 为模型类型）
@@ -59,5 +59,5 @@ export async function POST(
     },
   });
 
-  return NextResponse.json({ code: 0, data: { ...model, id: model.id.toString() } });
+  return NextResponse.json({ code: 0, data: serializeBigInt(model) });
 }

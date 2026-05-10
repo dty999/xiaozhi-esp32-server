@@ -243,12 +243,20 @@ function TemplateModelSelector({ template, onChange }: { template: any; onChange
 function TemplateTTSConfig({ template, onChange }: { template: any; onChange: (t: any) => void }) {
   const { token } = useAuthStore();
   const [voices, setVoices] = useState<Voice[]>([]);
+  const [cloneVoices, setCloneVoices] = useState<any[]>([]);
 
   const authHeaders = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {
     ofetch('/api/timbre?page=1&limit=100', { headers: authHeaders })
       .then((res: any) => { if (res.code === 0) setVoices(res.data.list || []); })
+      .catch(() => {});
+    ofetch('/api/voice-clone?page=1&limit=100', { headers: authHeaders })
+      .then((res: any) => {
+        if (res.code === 0) {
+          setCloneVoices((res.data.list || []).filter((v: any) => v.trainStatus === 2));
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -268,6 +276,14 @@ function TemplateTTSConfig({ template, onChange }: { template: any; onChange: (t
             {voices.map(v => (
               <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
             ))}
+            {cloneVoices.length > 0 && (
+              <>
+                <SelectItem value="_clone_separator" disabled>── 复刻音色 ──</SelectItem>
+                {cloneVoices.map((v: any) => (
+                  <SelectItem key={`clone_${v.id}`} value={v.id}>复刻·{v.name}</SelectItem>
+                ))}
+              </>
+            )}
           </SelectContent>
         </Select>
       </div>

@@ -19,6 +19,7 @@ import { join } from 'path';
 import { mkdir } from 'fs/promises';
 import { createHash } from 'crypto';
 import { cache } from '@/lib/redis';
+import { serializeBigInt } from '@/lib/serialize';
 
 // 最大文件大小：20MB
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
     // 增加上传计数
     await cache.set(todayKey, String(todayCount + 1), 86400);
 
-    return NextResponse.json({ code: 0, data: firmware });
+    return NextResponse.json({ code: 0, data: serializeBigInt(firmware) });
   } catch (e: any) {
     return NextResponse.json({ code: 500, msg: `资源上传失败: ${e.message}` }, { status: 500 });
   }

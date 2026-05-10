@@ -13,6 +13,7 @@ import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
 import { generateSnowflakeId } from '@/lib/snowflake';
 import { safeParseBody } from '@/lib/request-body';
+import { serializeBigInt } from '@/lib/serialize';
 
 // ─────────────────────────────────────────────
 // GET /api/ota/mag — 固件分页查询
@@ -27,9 +28,11 @@ export async function GET(request: NextRequest) {
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '10');
   const type = searchParams.get('type') || '';
+  const firmwareName = searchParams.get('firmwareName') || '';
 
   const where: any = {};
   if (type) where.type = type;
+  if (firmwareName) where.firmwareName = { contains: firmwareName };
 
   const [total, list] = await Promise.all([
     prisma.aiOta.count({ where }),
@@ -43,7 +46,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     code: 0,
-    data: { total, page, limit, list },
+    data: { total, page, limit, list: serializeBigInt(list) },
   });
 }
 
@@ -75,5 +78,5 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  return NextResponse.json({ code: 0, data: firmware });
+  return NextResponse.json({ code: 0, data: serializeBigInt(firmware) });
 }

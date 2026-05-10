@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
+import { serializeBigInt } from '@/lib/serialize';
 
 // GET /api/voice-resource/[id] — 详情
 export async function GET(
@@ -40,7 +41,7 @@ export async function GET(
     return NextResponse.json({ code: 403, msg: '无权限' }, { status: 403 });
   }
 
-  return NextResponse.json({ code: 0, data: vc });
+  return NextResponse.json({ code: 0, data: serializeBigInt(vc) });
 }
 
 // PUT /api/voice-resource/[id] — 更新音色资源

@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
 import { safeParseBody } from '@/lib/request-body';
+import { serializeBigInt } from '@/lib/serialize';
 
 // ─────────────────────────────────────────────
 // PUT /api/correct-word/files/[id] — 修改替换词文件
@@ -53,7 +54,7 @@ export async function PUT(
     },
   });
 
-  return NextResponse.json({ code: 0, data: updated });
+  return NextResponse.json({ code: 0, data: serializeBigInt(updated) });
 }
 
 // ─────────────────────────────────────────────

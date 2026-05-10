@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
+import { serializeBigInt } from '@/lib/serialize';
 import { cache } from '@/lib/redis';
 import { safeParseBody } from '@/lib/request-body';
 import { v4 as uuidv4 } from 'uuid';
@@ -47,5 +48,5 @@ export async function POST__name(
     data: { name: body.name },
   });
 
-  return NextResponse.json({ code: 0, data: updated });
+  return NextResponse.json({ code: 0, data: serializeBigInt(updated) });
 }

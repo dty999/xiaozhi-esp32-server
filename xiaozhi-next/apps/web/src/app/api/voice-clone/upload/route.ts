@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
+import { serializeBigInt } from '@/lib/serialize';
 import { generateSnowflakeId } from '@/lib/snowflake';
 import { writeFile } from 'fs/promises';
 import { join } from 'path';
@@ -66,10 +67,11 @@ export async function POST(request: NextRequest) {
         voiceId: `clone_${Date.now()}`,
         userId: auth.payload!.userId,
         trainStatus: 0, // 0=未训练
+        audioPath: filePath,
       },
     });
 
-    return NextResponse.json({ code: 0, data: clone });
+    return NextResponse.json({ code: 0, data: serializeBigInt(clone) });
   } catch (e: any) {
     return NextResponse.json({ code: 500, msg: `上传失败: ${e.message}` });
   }

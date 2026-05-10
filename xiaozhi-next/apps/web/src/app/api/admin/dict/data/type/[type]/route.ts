@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { cache } from '@/lib/redis';
+import { serializeBigInt } from '@/lib/serialize';
 
 // GET /api/admin/dict/data/type/[type] — 按字典类型获取数据（公开）
 export async function GET(
@@ -41,7 +42,7 @@ export async function GET(
   });
 
   // 回填缓存
-  await cache.set(cacheKey, JSON.stringify(data), 3600);
+  await cache.set(cacheKey, JSON.stringify(serializeBigInt(data)), 3600);
 
-  return NextResponse.json({ code: 0, data });
+  return NextResponse.json({ code: 0, data: serializeBigInt(data) });
 }

@@ -32,6 +32,9 @@ export async function GET(
   if (!kb) {
     return NextResponse.json({ code: 404, msg: '知识库不存在' });
   }
+  if (kb.creator !== auth.payload!.userId && auth.payload!.superAdmin !== 1) {
+    return NextResponse.json({ code: 403, msg: '无权限' }, { status: 403 });
+  }
 
   const document = await prisma.document.findUnique({ where: { id: BigInt(docId) } });
   if (!document) {

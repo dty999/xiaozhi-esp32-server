@@ -199,10 +199,21 @@ function AgentModelSelector({ agent, onChange }: { agent: any; onChange: (a: any
 function AgentTTSConfig({ agent, onChange }: { agent: any; onChange: (a: any) => void }) {
   const { token } = useAuthStore();
   const [voices, setVoices] = useState<Voice[]>([]);
+  const [cloneVoices, setCloneVoices] = useState<any[]>([]);
 
   useEffect(() => {
-    ofetch('/api/timbre?page=1&limit=100', { headers: { Authorization: `Bearer ${token}` } })
+    const headers = { Authorization: `Bearer ${token}` };
+    // 获取普通音色
+    ofetch('/api/timbre?page=1&limit=100', { headers })
       .then((res: any) => { if (res.code === 0) setVoices(res.data.list || []); })
+      .catch(() => {});
+    // 获取克隆音色（训练成功的）
+    ofetch('/api/voice-clone?page=1&limit=100', { headers })
+      .then((res: any) => {
+        if (res.code === 0) {
+          setCloneVoices((res.data.list || []).filter((v: any) => v.trainStatus === 2));
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -217,6 +228,14 @@ function AgentTTSConfig({ agent, onChange }: { agent: any; onChange: (a: any) =>
           <SelectContent>
             <SelectItem value="_none">未选择</SelectItem>
             {voices.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
+            {cloneVoices.length > 0 && (
+              <>
+                <SelectItem value="_clone_separator" disabled>── 复刻音色 ──</SelectItem>
+                {cloneVoices.map((v: any) => (
+                  <SelectItem key={`clone_${v.id}`} value={v.id}>复刻·{v.name}</SelectItem>
+                ))}
+              </>
+            )}
           </SelectContent>
         </Select>
       </div>

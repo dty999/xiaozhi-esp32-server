@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
+import { serializeBigInt } from '@/lib/serialize';
 
 // PUT /api/models/[param]/enable/[status] — 启用/禁用模型
 export async function PUT(
@@ -20,5 +21,5 @@ export async function PUT(
     data: { isEnabled },
   });
 
-  return NextResponse.json({ code: 0, data: { ...model, id: model.id.toString() } });
+  return NextResponse.json({ code: 0, data: serializeBigInt(model) });
 }

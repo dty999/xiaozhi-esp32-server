@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
+import { serializeBigInt } from '@/lib/serialize';
 
 export async function GET(
   request: NextRequest,
@@ -48,6 +49,6 @@ export async function GET(
 
   return NextResponse.json({
     code: 0,
-    data: { total, page, limit, list },
+    data: { total, page, limit, list: serializeBigInt(list) },
   });
 }

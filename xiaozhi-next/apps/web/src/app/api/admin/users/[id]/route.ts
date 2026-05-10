@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
 import { hashPassword } from '@/lib/password';
+import { serializeBigInt } from '@/lib/serialize';
 
 // GET /api/admin/users/[id] — 用户详情
 export async function GET(
@@ -26,7 +27,7 @@ export async function GET(
     return NextResponse.json({ code: 404, msg: '用户不存在' });
   }
 
-  return NextResponse.json({ code: 0, data: user });
+  return NextResponse.json({ code: 0, data: serializeBigInt(user) });
 }
 
 // PUT /api/admin/users/[id] — 重置密码

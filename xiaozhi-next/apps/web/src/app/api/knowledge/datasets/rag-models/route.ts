@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
+import { serializeBigInt } from '@/lib/serialize';
 
 export async function GET(request: NextRequest) {
   const auth = await authenticate('oauth2', request);
@@ -23,7 +24,8 @@ export async function GET(request: NextRequest) {
   const models = await prisma.modelConfig.findMany({
     where: {
       modelType: {
-        in: ['RAG', 'rag', 'Rag'],
+        contains: 'rag',
+        mode: 'insensitive',
       },
       isEnabled: 1,
     },
@@ -38,5 +40,5 @@ export async function GET(request: NextRequest) {
     orderBy: { sort: 'asc' },
   });
 
-  return NextResponse.json({ code: 0, data: models });
+  return NextResponse.json({ code: 0, data: serializeBigInt(models) });
 }

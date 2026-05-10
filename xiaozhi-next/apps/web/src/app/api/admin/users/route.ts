@@ -3,6 +3,7 @@ import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
 import { generateSnowflakeId } from '@/lib/snowflake';
 import { hashPassword } from '@/lib/password';
+import { serializeBigInt } from '@/lib/serialize';
 
 export async function GET(request: NextRequest) {
   const auth = await authenticate('oauth2', request);
@@ -25,13 +26,48 @@ export async function GET(request: NextRequest) {
       skip: (page - 1) * limit,
       take: limit,
       orderBy: { createDate: 'desc' },
+      include: {
+        _count: { select: { devices: true, agents: true } },
+      },
     }),
   ]);
 
+  const mapped = list.map(u => {
+    const { _count, ...user } = u;
+    return {
+      ...serializeBigInt(user),
+      deviceCount: _count.devices,
+      agentCount: _count.agents,
+    };
+  });
+
   return NextResponse.json({
     code: 0,
-    data: { total, page, limit, list },
+    data: { total, page, limit, list: mapped },
   });
+}
+
+// PUT /api/admin/users/change-status — 批量启用/禁用用户
+export async function PUT(request: NextRequest) {
+  const auth = await authenticate('oauth2', request);
+  if (!auth.authenticated || auth.payload?.superAdmin !== 1) {
+    return NextResponse.json({ code: 403, msg: '无权限' }, { status: 403 });
+  }
+
+  const body = await request.json().catch(() => null);
+  if (!body || !body.status === undefined || !Array.isArray(body.userIds)) {
+    return NextResponse.json({ code: 400, msg: '参数错误' });
+  }
+
+  const status = body.status === 0 ? 0 : 1;
+  const userIds = body.userIds.map((id: any) => BigInt(id));
+
+  await prisma.sysUser.updateMany({
+    where: { id: { in: userIds } },
+    data: { status },
+  });
+
+  return NextResponse.json({ code: 0, msg: `已${status === 1 ? '启用' : '禁用'} ${userIds.length} 个用户` });
 }
 
 // POST /api/admin/users — 管理员创建用户

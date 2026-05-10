@@ -14,6 +14,7 @@ import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
 import { safeParseBody } from '@/lib/request-body';
 import { createRAGFlowClient } from '@/lib/ragflow-factory';
+import { serializeBigInt } from '@/lib/serialize';
 
 // ─────────────────────────────────────────────
 // GET /api/knowledge/datasets/[id] — 知识库详情
@@ -46,7 +47,7 @@ export async function GET(
     return NextResponse.json({ code: 403, msg: '无权限' }, { status: 403 });
   }
 
-  return NextResponse.json({ code: 0, data: kb });
+  return NextResponse.json({ code: 0, data: serializeBigInt(kb) });
 }
 
 // ─────────────────────────────────────────────
@@ -92,7 +93,18 @@ export async function PUT(
     },
   });
 
-  return NextResponse.json({ code: 0, data: updated });
+  // 同步更新 RAGFlow 远端（容错）
+  try {
+    const client = await createRAGFlowClient(existing.ragModelId);
+    await client.updateDataset(existing.datasetId, {
+      name: updated.name,
+      description: updated.description || undefined,
+    });
+  } catch {
+    // 远端更新失败不影响本地
+  }
+
+  return NextResponse.json({ code: 0, data: serializeBigInt(updated) });
 }
 
 // ─────────────────────────────────────────────

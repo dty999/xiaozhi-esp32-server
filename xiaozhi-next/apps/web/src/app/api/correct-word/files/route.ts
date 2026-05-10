@@ -15,6 +15,7 @@ import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
 import { generateSnowflakeId } from '@/lib/snowflake';
 import { safeParseBody } from '@/lib/request-body';
+import { serializeBigInt } from '@/lib/serialize';
 
 // ─────────────────────────────────────────────
 // GET /api/correct-word/files — 分页获取文件列表
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     code: 0,
-    data: { total, page, limit, list },
+    data: { total, page, limit, list: serializeBigInt(list) },
   });
 }
 
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  return NextResponse.json({ code: 0, data: file });
+  return NextResponse.json({ code: 0, data: serializeBigInt(file) });
 }
 
 // ─────────────────────────────────────────────

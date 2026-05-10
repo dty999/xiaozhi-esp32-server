@@ -20,7 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Pencil, Trash2, Check, X } from 'lucide-react';
 import { useAuthStore } from '@/hooks/useAuth';
 
-const MODEL_TYPES = ['ASR', 'VAD', 'LLM', 'TTS', 'Memory', 'Intent', 'VLLM', 'SLM'] as const;
+const MODEL_TYPES = ['ASR', 'VAD', 'LLM', 'TTS', 'Memory', 'Intent', 'VLLM', 'SLM', 'RAG'] as const;
 
 /** 字段定义（对应 ModelProvider.fields 的 JSON Schema） */
 interface FieldSchema {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
+import { serializeBigInt } from '@/lib/serialize';
 
 // GET /api/models/[param]/voices — 获取某 TTS 模型下的音色列表（param 为模型 ID）
 export async function GET(
@@ -19,6 +20,5 @@ export async function GET(
     orderBy: { sort: 'asc' },
   });
 
-  const serialized = voices.map(v => ({ ...v, id: v.id.toString(), ttsModelId: v.ttsModelId.toString() }));
-  return NextResponse.json({ code: 0, data: serialized });
+  return NextResponse.json({ code: 0, data: serializeBigInt(voices) });
 }

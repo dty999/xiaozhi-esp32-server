@@ -2,5 +2,63 @@
   "common": { "save": "儲存", "cancel": "取消", "delete": "刪除", "edit": "編輯", "create": "新增", "search": "搜尋", "confirm": "確認", "back": "返回", "loading": "載入中...", "noData": "暫無資料", "success": "操作成功", "error": "操作失敗" },
   "auth": { "login": "登入", "register": "註冊", "forgotPassword": "忘記密碼", "username": "使用者名稱", "password": "密碼", "captcha": "驗證碼", "phone": "手機號", "sendSms": "發送驗證碼", "loginSuccess": "登入成功", "registerSuccess": "註冊成功", "resetPassword": "重設密碼", "goLogin": "前往登入", "backLogin": "返回登入" },
   "nav": { "home": "首頁", "models": "模型配置", "devices": "裝置管理", "knowledge": "知識庫", "voiceClone": "聲音複製", "voiceResource": "音色資源", "voicePrints": "聲紋管理", "ota": "OTA管理", "users": "使用者管理", "params": "參數管理", "dicts": "字典管理", "templates": "模板管理", "replacement": "替換詞", "server": "伺服器管理", "features": "功能配置", "timbre": "音色管理", "providers": "供應商管理", "settings": "系統設定" },
-  "agent": { "title": "智能體", "myAgents": "我的智能體", "newAgent": "新增智能體", "config": "配置", "chatHistory": "聊天記錄", "basicInfo": "基本資訊", "modelConfig": "模型配置", "ttsConfig": "語音合成", "plugins": "外掛工具", "systemPrompt": "系統提示詞", "tags": "標籤", "addTag": "新增標籤", "bindDevice": "綁定裝置", "activationCode": "啟用碼" }
+  "agent": { "title": "智能體", "myAgents": "我的智能體", "newAgent": "新增智能體", "config": "配置", "chatHistory": "聊天記錄", "basicInfo": "基本資訊", "modelConfig": "模型配置", "ttsConfig": "語音合成", "plugins": "外掛工具", "systemPrompt": "系統提示詞", "tags": "標籤", "addTag": "新增標籤", "bindDevice": "綁定裝置", "activationCode": "啟用碼" },
+  "voice": {
+    "resource": {
+      "title": "音色資源",
+      "add": "新增音色資源",
+      "name": "名稱",
+      "voiceId": "聲音ID",
+      "user": "使用者",
+      "platform": "平台",
+      "languages": "語言",
+      "status": "狀態",
+      "createdAt": "創建時間",
+      "selectUser": "選擇使用者",
+      "searchUser": "搜尋使用者",
+      "selectPlatform": "選擇平台"
+    },
+    "clone": {
+      "title": "聲音複製",
+      "upload": "上傳音頻",
+      "play": "播放",
+      "stop": "停止",
+      "train": "訓練",
+      "retrain": "重新訓練",
+      "edit": "編輯",
+      "delete": "刪除",
+      "status": {
+        "untrained": "未訓練",
+        "training": "訓練中",
+        "success": "訓練成功",
+        "failed": "訓練失敗"
+      },
+      "noAudio": "未上傳音頻",
+      "hasAudio": "已上傳音頻",
+      "searchPlaceholder": "搜尋名稱..."
+    },
+    "timbre": {
+      "title": "音色管理",
+      "add": "新增音色",
+      "edit": "編輯音色",
+      "name": "音色名稱",
+      "ttsModel": "TTS模型",
+      "voiceCode": "音色代碼",
+      "languages": "語言",
+      "sort": "排序",
+      "voiceDemo": "演示音頻",
+      "referenceAudio": "參考音頻",
+      "referenceText": "參考文本",
+      "remark": "備註"
+    },
+    "print": {
+      "title": "聲紋管理",
+      "add": "新增聲紋",
+      "edit": "編輯聲紋",
+      "name": "名稱",
+      "description": "描述",
+      "audioVector": "音頻向量",
+      "selectAudio": "選擇音頻"
+    }
+  }
 }

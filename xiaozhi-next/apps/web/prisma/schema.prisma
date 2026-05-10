@@ -370,10 +370,12 @@ model Document {
   fileType        String?   @map("file_type") @db.VarChar(32)
   status          String?   @db.VarChar(32)
   progress        String?   @db.VarChar(32)
+  error           String?   @db.Text
   chunkMethod     String?   @map("chunk_method") @db.VarChar(64)
   chunkCount      Int?      @map("chunk_count")
   tokenCount      Int?      @map("token_count")
   parserConfig    Json?     @map("parser_config") @db.Json
+  lastSyncAt      DateTime? @map("last_sync_at") @db.Timestamp(0)
   creator         BigInt?
   createDate      DateTime? @map("create_date") @db.Timestamp(0)
   knowledgeBase   KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id])
@@ -389,6 +391,8 @@ model VoiceClone {
   languages   String?   @db.VarChar(128)
   userId      BigInt    @map("user_id")
   trainStatus Int?      @default(0) @map("train_status") @db.SmallInt
+  trainError  String?   @map("train_error") @db.VarChar(512)
+  audioPath   String?   @map("audio_path") @db.VarChar(512)
   creator     BigInt?
   createDate  DateTime? @map("create_date") @db.Timestamp(0)
   user        SysUser   @relation(fields: [userId], references: [id])

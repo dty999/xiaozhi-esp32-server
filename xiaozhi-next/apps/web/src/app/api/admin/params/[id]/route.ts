@@ -3,6 +3,7 @@ import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
 import { cache } from '@/lib/redis';
 import { safeParseBody } from '@/lib/request-body';
+import { serializeBigInt } from '@/lib/serialize';
 
 // GET /api/admin/params/[id] — 参数详情
 export async function GET(
@@ -21,7 +22,7 @@ export async function GET(
     return NextResponse.json({ code: 404, msg: '参数不存在' });
   }
 
-  return NextResponse.json({ code: 0, data: param });
+  return NextResponse.json({ code: 0, data: serializeBigInt(param) });
 }
 
 // PUT /api/admin/params/[id] — 更新参数
@@ -57,7 +58,7 @@ export async function PUT(
   // 同步 Redis 缓存
   await cache.hset('sys:params', updated.paramCode, updated.paramValue);
 
-  return NextResponse.json({ code: 0, data: updated });
+  return NextResponse.json({ code: 0, data: serializeBigInt(updated) });
 }
 
 // DELETE /api/admin/params/[id] — 删除参数

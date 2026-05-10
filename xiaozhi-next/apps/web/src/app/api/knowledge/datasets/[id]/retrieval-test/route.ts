@@ -4,7 +4,7 @@
  * 对标 Java KnowledgeFilesController:
  *   POST /datasets/{id}/retrieval-test  → POST /api/knowledge/datasets/[id]/retrieval-test
  *
- * 请求体：{ query: string, topK?: number }
+ * 请求体：{ query: string, topK?: number, datasetIds?: string[] }
  *
  * @module knowledge/datasets/[id]/retrieval-test
  */
@@ -30,7 +30,7 @@ export async function POST(
     return NextResponse.json({ code: 400, msg: '请求参数格式错误' });
   }
 
-  const { query, topK = 5 } = body;
+  const { query, topK = 5, datasetIds } = body;
   if (!query) {
     return NextResponse.json({ code: 400, msg: '请输入测试检索词' });
   }
@@ -47,8 +47,10 @@ export async function POST(
   // 调用 RAGFlow 召回测试
   try {
     const client = await createRAGFlowClient(kb.ragModelId);
-    // result 已是 RAGFlow 完整响应 { code, data }，直接透传
-    const result = await client.retrievalTest(kb.datasetId, query, topK);
+    const targetDatasetIds = datasetIds && Array.isArray(datasetIds) && datasetIds.length > 0
+      ? datasetIds
+      : [kb.datasetId];
+    const result = await client.retrievalTest(targetDatasetIds, query, topK);
     return NextResponse.json(result);
   } catch (e: any) {
     return NextResponse.json({ code: 500, msg: `召回测试失败: ${e.message}` }, { status: 500 });

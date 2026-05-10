@@ -18,6 +18,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
+import { serializeBigInt } from '@/lib/serialize';
 
 // ─────────────────────────────────────────────
 // GET /api/voice-resource — 管理员分页
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     code: 0,
-    data: { total, page, limit, list },
+    data: { total, page, limit, list: serializeBigInt(list) },
   });
 }
 
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  return NextResponse.json({ code: 0, data: vc });
+  return NextResponse.json({ code: 0, data: serializeBigInt(vc) });
 }
 
 // ─────────────────────────────────────────────

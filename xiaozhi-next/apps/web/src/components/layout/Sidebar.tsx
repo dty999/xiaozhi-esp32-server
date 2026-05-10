@@ -1,16 +1,28 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { ofetch } from 'ofetch';
 import {
   LayoutDashboard, Cpu, Settings, Users, Database,
   BookOpen, Mic, Music, Package, Server, FileText,
-  Zap, Wrench, UserCog, ChevronLeft, ChevronRight, Globe
+  Zap, Wrench, UserCog, ChevronLeft, ChevronRight, Globe,
+  User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useAuthStore } from '@/hooks/useAuth';
 
 // ───── 菜单定义 ─────
-const menuItems = [
+interface MenuItem {
+  href: string;
+  label: string;
+  icon: any;
+  admin?: boolean;
+  /** 对应 systemWebMenu.features 中的 key，不写则始终显示 */
+  feature?: string;
+}
+
+const menuItems: MenuItem[] = [
   { href: '/home', label: '首页', icon: LayoutDashboard },
   { href: '/devices', label: '设备管理', icon: Cpu, admin: true },
   { href: '/models', label: '模型配置', icon: Settings, admin: true },
@@ -18,8 +30,9 @@ const menuItems = [
   { href: '/providers', label: '供应器管理', icon: Package, admin: true },
   { href: '/templates', label: '模板管理', icon: FileText, admin: true },
   { href: '/dicts', label: '字典管理', icon: Database, admin: true },
-  { href: '/knowledge', label: '知识库', icon: BookOpen },
-  { href: '/voice-clone', label: '声音克隆', icon: Mic },
+  { href: '/knowledge', label: '知识库', icon: BookOpen, feature: 'knowledgeBase' },
+  { href: '/voice-clone', label: '声音克隆', icon: Mic, feature: 'voiceClone' },
+  { href: '/voice-prints', label: '声纹管理', icon: User, feature: 'voiceprintRecognition' },
   { href: '/voice-resource', label: '音色资源', icon: Music, admin: true },
   { href: '/ota', label: 'OTA 管理', icon: Zap, admin: true },
   { href: '/replacement', label: '替换词', icon: FileText },
@@ -31,10 +44,38 @@ const menuItems = [
 
 export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [featureMap, setFeatureMap] = useState<Record<string, boolean>>({});
   const pathname = usePathname();
   const router = useRouter();
+  const { token } = useAuthStore();
 
-  const visibleItems = isAdmin ? menuItems : menuItems.filter(m => !m.admin);
+  // 加载功能配置
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await ofetch('/api/auth/pub-config', { headers: { Authorization: `Bearer ${token}` } });
+        if (res.code === 0) {
+          const features = res.data?.systemWebMenu?.features || {};
+          const map: Record<string, boolean> = {};
+          for (const [key, val] of Object.entries(features) as [string, any][]) {
+            map[key] = val?.enabled === true;
+          }
+          setFeatureMap(map);
+        }
+      } catch { /* 网络失败时 featureMap 保持空，下面会全部显示 */ }
+    })();
+  }, [token]);
+
+  // 管理员无视功能配置，全部显示
+  // 普通用户受 feature 开关控制 + 隐藏 admin 菜单
+  // featureMap 为空（API 失败）时全部显示，避免误隐藏
+  const featuresLoaded = Object.keys(featureMap).length > 0;
+  const visibleItems = menuItems.filter(m => {
+    if (isAdmin) return true;
+    if (m.admin) return false;
+    if (m.feature && featuresLoaded && !featureMap[m.feature]) return false;
+    return true;
+  });
 
   return (
     <aside

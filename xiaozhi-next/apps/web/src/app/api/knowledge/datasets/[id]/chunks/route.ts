@@ -46,18 +46,27 @@ export async function POST(
   let result: any = null;
   try {
     const client = await createRAGFlowClient(kb.ragModelId);
-    // RAGFlow 内部会自动处理 document_ids 对应的文档
-    for (const docId of documentIds) {
-      const doc = await prisma.document.findUnique({ where: { id: BigInt(docId) } });
-      if (doc) {
-        result = await client.parseDocument(kb.datasetId, doc.documentId);
-        // 更新文档状态为 RUNNING
-        await prisma.document.update({
-          where: { id: BigInt(docId) },
-          data: { status: 'RUNNING' },
-        });
-      }
+
+    // 查询所有指定文档
+    const docs = await prisma.document.findMany({
+      where: { id: { in: documentIds.map((did: string) => BigInt(did)) } },
+    });
+
+    // 收集远程文档 ID（排除 local_ 前缀的本地文档）
+    const remoteDocIds = docs
+      .filter((doc) => doc.documentId && !doc.documentId.startsWith('local_'))
+      .map((doc) => doc.documentId);
+
+    if (remoteDocIds.length > 0) {
+      // 单次 RAGFlow 调用批量解析
+      result = await client.parseDocument(kb.datasetId, remoteDocIds);
     }
+
+    // 批量更新所有文档状态为 RUNNING
+    await prisma.document.updateMany({
+      where: { id: { in: documentIds.map((did: string) => BigInt(did)) } },
+      data: { status: 'RUNNING' },
+    });
   } catch (e: any) {
     return NextResponse.json({ code: 500, msg: `解析请求失败: ${e.message}` }, { status: 500 });
   }

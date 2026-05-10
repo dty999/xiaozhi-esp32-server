@@ -15,6 +15,7 @@ import { prisma } from '@/lib/db';
 import { generateSnowflakeId } from '@/lib/snowflake';
 import { createRAGFlowClient } from '@/lib/ragflow-factory';
 import { safeParseBody } from '@/lib/request-body';
+import { serializeBigInt } from '@/lib/serialize';
 
 // ─────────────────────────────────────────────
 // GET /api/knowledge/datasets/[id]/documents — 文档列表
@@ -55,7 +56,36 @@ export async function GET(
     }),
   ]);
 
-  return NextResponse.json({ code: 0, data: { total, page, limit, list } });
+  // 对 RUNNING 状态的文档做轻量级状态同步
+  const client = await createRAGFlowClient(kb.ragModelId).catch(() => null);
+  if (client) {
+    for (const doc of list) {
+      if (doc.status === 'RUNNING' && doc.documentId && !doc.documentId.startsWith('local_')) {
+        try {
+          const statusRes = await client.getDocumentStatus(kb.datasetId, doc.documentId);
+          if (statusRes?.data?.status && statusRes.data.status !== doc.status) {
+            const newStatus = statusRes.data.status;
+            await prisma.document.update({
+              where: { id: doc.id },
+              data: {
+                status: newStatus,
+                chunkCount: statusRes.data.chunk_count ?? undefined,
+                tokenCount: statusRes.data.token_count ?? undefined,
+                progress: statusRes.data.progress ?? undefined,
+                error: newStatus === 'FAILED' ? (statusRes.data.error || '解析失败') : null,
+                lastSyncAt: new Date(),
+              },
+            });
+            doc.status = newStatus;
+            if (statusRes.data.chunk_count !== undefined) doc.chunkCount = statusRes.data.chunk_count;
+            if (statusRes.data.token_count !== undefined) doc.tokenCount = statusRes.data.token_count;
+          }
+        } catch { /* 单条同步失败不影响其他 */ }
+      }
+    }
+  }
+
+  return NextResponse.json({ code: 0, data: { total, page, limit, list: serializeBigInt(list) } });
 }
 
 // ─────────────────────────────────────────────
@@ -92,19 +122,20 @@ export async function POST(
     const fileSize = rawFile.size || 0;
     const fileType = rawFile.type || 'unknown';
 
-    const client = await createRAGFlowClient(kb.ragModelId);
-
     let remoteDocId = '';
-    let status = 'pending';
+    let status = 'PENDING';
+    let errorMsg: string | null = null;
 
-    // 上传至 RAGFlow（rawFile 在运行时即为 File/Blob 类型）
+    // 上传至 RAGFlow（容错：RAGFlow 不可用时仍创建本地记录）
     try {
+      const client = await createRAGFlowClient(kb.ragModelId);
       const result = await client.uploadDocument(kb.datasetId, rawFile as File);
       remoteDocId = result.data?.id || '';
       status = 'RUNNING';
-    } catch {
-      // RAGFlow 不可用时的 fallback 状态
+    } catch (ragErr: any) {
+      console.warn('RAGFlow 上传失败，使用本地模式:', ragErr.message);
       status = 'FAILED';
+      errorMsg = ragErr.message || '上传至 RAGFlow 失败';
     }
 
     // 保存文档记录
@@ -117,11 +148,13 @@ export async function POST(
         fileSize: BigInt(fileSize),
         fileType: fileType,
         status,
+        error: errorMsg,
+        lastSyncAt: new Date(),
         creator: auth.payload!.userId,
       },
     });
 
-    return NextResponse.json({ code: 0, data: document });
+    return NextResponse.json({ code: 0, data: serializeBigInt(document) });
   } catch (e: any) {
     return NextResponse.json({ code: 500, msg: `文档上传失败: ${e.message}` }, { status: 500 });
   }

@@ -13,6 +13,7 @@ import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
 import { generateSnowflakeId } from '@/lib/snowflake';
 import { safeParseBody } from '@/lib/request-body';
+import { serializeBigInt } from '@/lib/serialize';
 
 // ─────────────────────────────────────────────
 // POST /api/agents/voice-prints — 创建声纹
@@ -52,5 +53,5 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  return NextResponse.json({ code: 0, data: voicePrint });
+  return NextResponse.json({ code: 0, data: serializeBigInt(voicePrint) });
 }

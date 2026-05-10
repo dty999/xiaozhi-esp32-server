@@ -18,6 +18,7 @@ import { writeFile } from 'fs/promises';
 import { join } from 'path';
 import { mkdir } from 'fs/promises';
 import { createHash } from 'crypto';
+import { serializeBigInt } from '@/lib/serialize';
 
 export async function POST(request: NextRequest) {
   const auth = await authenticate('oauth2', request);
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ code: 0, data: firmware });
+    return NextResponse.json({ code: 0, data: serializeBigInt(firmware) });
   } catch (e: any) {
     return NextResponse.json({ code: 500, msg: `固件上传失败: ${e.message}` }, { status: 500 });
   }

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { cache } from '@/lib/redis';
 import { generateSnowflakeId } from '@/lib/snowflake';
 import { safeParseBody } from '@/lib/request-body';
+import { serializeBigInt } from '@/lib/serialize';
 
 // 敏感参数关键词
 const SENSITIVE_KEYWORDS = ['api_key', 'api_key_id', 'apikey', 'secret', 'token', 'password', 'private'];
@@ -37,15 +38,15 @@ export async function GET(request: NextRequest) {
     }),
   ]);
 
-  // 敏感参数脱敏
-  const maskedList = list.map(p => ({
-    ...p,
-    paramValue: isSensitiveParam(p.paramCode) ? '******' : p.paramValue,
+  // 敏感标记（不脱敏值，由前端控制显隐）
+  const resultList = list.map(p => ({
+    ...serializeBigInt(p),
+    isSensitive: isSensitiveParam(p.paramCode),
   }));
 
   return NextResponse.json({
     code: 0,
-    data: { total, page, limit, list: maskedList },
+    data: { total, page, limit, list: resultList },
   });
 }
 
@@ -73,5 +74,5 @@ export async function POST(request: NextRequest) {
   // 更新 Redis 缓存
   await cache.hset('sys:params', param.paramCode, param.paramValue);
 
-  return NextResponse.json({ code: 0, data: param });
+  return NextResponse.json({ code: 0, data: serializeBigInt(param) });
 }

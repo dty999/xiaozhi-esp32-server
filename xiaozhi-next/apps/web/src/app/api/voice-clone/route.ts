@@ -54,6 +54,8 @@ export async function GET(request: NextRequest) {
     modelId: vc.modelId.toString(),
     languages: vc.languages,
     trainStatus: vc.trainStatus,
+    trainError: vc.trainError,
+    audioPath: vc.audioPath ? 'has_audio' : null, // 不暴露真实路径，仅标识有无
     userId: vc.userId.toString(),
     username: vc.user?.username || '',
     createDate: vc.createDate,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
 import { safeParseBody } from '@/lib/request-body';
+import { serializeBigInt } from '@/lib/serialize';
 
 // GET /api/models/[param] — 模型详情（param 为模型 ID）
 export async function GET(
@@ -22,7 +23,7 @@ export async function GET(
     return NextResponse.json({ code: 404, msg: '模型不存在' });
   }
 
-  return NextResponse.json({ code: 0, data: { ...model, id: model.id.toString() } });
+  return NextResponse.json({ code: 0, data: serializeBigInt(model) });
 }
 
 // PUT /api/models/[param] — 更新模型
@@ -55,7 +56,7 @@ export async function PUT(
     },
   });
 
-  return NextResponse.json({ code: 0, data: { ...model, id: model.id.toString() } });
+  return NextResponse.json({ code: 0, data: serializeBigInt(model) });
 }
 
 // DELETE /api/models/[param] — 删除模型

@@ -295,7 +295,7 @@ export default function KnowledgeDocumentsPage() {
                     </Button>
                   )}
                   {/* 解析：未完成且非 RUNNING 的文档可触发解析 */}
-                  {doc.status !== 'SUCCESS' && doc.status !== 'RUNNING' && (
+                  {doc.status !== 'SUCCESS' && doc.status !== 'RUNNING' && !doc.documentId?.startsWith('local_') && (
                     <Button size="sm" variant="outline" onClick={() => handleParse([doc.id])}>
                       <Play size={14} className="mr-1" />解析
                     </Button>

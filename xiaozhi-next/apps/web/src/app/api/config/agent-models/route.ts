@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticate } from '@/lib/auth-guard';
 import { prisma } from '@/lib/db';
 import { safeParseBody } from '@/lib/request-body';
+import { serializeBigInt } from '@/lib/serialize';
 
 // POST /api/config/agent-models — 智能体配置下发（xiaozhi-server 调用，ServerSecret 鉴权）
 export async function POST(request: NextRequest) {
@@ -106,10 +107,10 @@ export async function POST(request: NextRequest) {
     where: { agentId: agent.id },
   });
   if (plugins.length > 0) {
-    modelConfig['Plugin'] = plugins.map(p => ({
+    modelConfig['Plugin'] = serializeBigInt(plugins.map(p => ({
       id: p.pluginId,
       targetId: p.targetId,
-    }));
+    })));
   }
 
   // 8. 智能体参数
