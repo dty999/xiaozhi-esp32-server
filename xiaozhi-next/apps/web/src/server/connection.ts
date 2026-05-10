@@ -24,10 +24,15 @@ import { createLLMProvider } from './llm/provider-factory';
 import { createTTSProvider } from './tts/provider-factory';
 import { createMemoryProvider } from './memory/provider-factory';
 import { createIntentProvider } from './intent/provider-factory';
-import { initPlugins, getToolDefinitions, executeToolCalls } from './plugins/func-handler';
+import { initPlugins, getToolDefinitions, executeToolCalls, registerTool, ToolFunction, ToolContext } from './plugins/func-handler';
 import type { ToolResult } from './plugins/func-handler';
 import { buildContext } from './context/context-provider';
 import { logger } from './utils/logger';
+import { MCPClient } from './mcp/mcp-client';
+import { handleMCPMessage, sendMCPInitialize, callMCPTool } from './mcp/mcp-handler';
+import { IotDescriptor } from './iot/iot-descriptor';
+import { handleIotDescriptors, handleIotStatus, registerIotTools, getIotStatus, sendIotCommand } from './iot/iot-handler';
+import { handleServerMessage } from './server/server-handler';
 
 // ---- 句子生命周期枚举（对标 SentenceType） ----
 const SentenceState = { FIRST: 'first', MIDDLE: 'middle', LAST: 'last' } as const;
@@ -87,6 +92,19 @@ export class ConnectionHandler {
   // ---- 意图与插件 ----
   private intentType = 'nointent'; private pluginsLoaded = false;
   private welcomeMsg: Record<string, any>;
+
+  // ---- MCP 客户端（对标旧Python: conn.mcp_client） ----
+  mcpClient: MCPClient | null = null;
+  private features: Record<string, any> = {};
+
+  // ---- IoT 设备描述符（对标旧Python: conn.iot_descriptors） ----
+  iotDescriptors: Map<string, IotDescriptor> = new Map();
+  private iotToolsRegistered = false;
+
+  // ---- 设备绑定状态（对标旧Python: conn.need_bind） ----
+  private needBind = false;
+  private bindCompleted = false;
+  private readConfigFromApi = false;
 
   constructor(ws: WebSocket, deviceId: string, clientIp: string) {
     this.ws = ws; this.deviceId = deviceId; this.clientIp = clientIp;
@@ -199,8 +217,9 @@ export class ConnectionHandler {
       case 'hello': this._handleHello(msg); break;
       case 'listen': this._handleListen(msg); break;
       case 'abort': this._handleAbort(); break;
-      case 'iot': this._sendJson({ type: 'iot', state: 'ack' }); break;
-      case 'mcp': /* TODO */ break;
+      case 'iot': this._handleIotMessage(msg); break;
+      case 'mcp': this._handleMcpMessage(msg); break;
+      case 'server': this._handleServerMessage(msg); break;
       case 'ping': this._sendJson({ type: 'pong' }); break;
     }
   }
@@ -209,7 +228,14 @@ export class ConnectionHandler {
   private _handleHello(msg: Record<string, any>): void {
     if (msg.audio_params) { this.welcomeMsg.audio_params = msg.audio_params; }
     this.welcomeMsg.transport = msg.transport || 'ws';
-    if (msg.features?.mcp) { console.log(`[Connection] ${this.deviceId} 支持MCP`); }
+    if (msg.features) {
+      this.features = msg.features;
+      if (msg.features.mcp) {
+        logger.info('Connection', `设备支持MCP，初始化MCP客户端`, { deviceId: this.deviceId });
+        this.mcpClient = new MCPClient();
+        sendMCPInitialize(this.ws);
+      }
+    }
     this._sendJson(this.welcomeMsg);
   }
 
@@ -232,6 +258,165 @@ export class ConnectionHandler {
     // 重置流控器
     if (this.rateController) { this.rateController.stopSending(); this.rateController = null; }
     this._sendJson({ type: 'tts', state: 'stop' });
+  }
+
+  // ===== IoT 消息处理（对标 iotMessageHandler） =====
+  private _handleIotMessage(msg: Record<string, any>): void {
+    if (msg.descriptors) {
+      const changed = handleIotDescriptors(
+        this.iotDescriptors,
+        msg.descriptors,
+        () => { this._refreshIotTools(); },
+      );
+      if (changed) {
+        logger.info('Connection', `IoT描述符已更新`, {
+          deviceId: this.deviceId,
+          count: this.iotDescriptors.size,
+        });
+      }
+    }
+    if (msg.states) {
+      handleIotStatus(this.iotDescriptors, msg.states);
+    }
+  }
+
+  // ===== MCP 消息处理（对标 mcpMessageHandler） =====
+  private _handleMcpMessage(msg: Record<string, any>): void {
+    if (!this.mcpClient) {
+      logger.warn('Connection', `收到MCP消息但客户端未初始化`, { deviceId: this.deviceId });
+      return;
+    }
+    if (msg.payload) {
+      handleMCPMessage(this.ws, this.mcpClient, msg.payload, () => {
+        this._refreshMCPTools();
+      }).catch((e: any) => {
+        logger.error('Connection', `MCP消息处理失败: ${e.message}`, { deviceId: this.deviceId });
+      });
+    }
+  }
+
+  // ===== Server 消息处理（对标 serverMessageHandler） =====
+  private _handleServerMessage(msg: Record<string, any>): void {
+    handleServerMessage(this.ws, msg, {
+      readConfigFromApi: this.readConfigFromApi,
+      secret: process.env.SERVER_SECRET,
+      server: null,
+    });
+  }
+
+  /** 刷新IoT工具注册 */
+  private _refreshIotTools(): void {
+    const iotTools = registerIotTools(this.iotDescriptors);
+    for (const toolDef of iotTools) {
+      const name = toolDef.function.name;
+      if (!this.iotToolsRegistered) {
+        const handler: ToolFunction = async (args, ctx) => {
+          return this._executeIotTool(name, args, ctx);
+        };
+        registerTool(name, handler, toolDef);
+      }
+    }
+    this.iotToolsRegistered = true;
+    logger.info('Connection', `IoT工具已注册`, {
+      deviceId: this.deviceId,
+      count: iotTools.length,
+    });
+  }
+
+  /** 刷新MCP工具注册 */
+  private _refreshMCPTools(): void {
+    if (!this.mcpClient) return;
+    const mcpTools = this.mcpClient.getAvailableTools();
+    for (const toolDef of mcpTools) {
+      const name = toolDef.function.name;
+      const handler: ToolFunction = async (args, ctx) => {
+        return this._executeMCPTool(name, args, ctx);
+      };
+      registerTool(name, handler, {
+        type: 'function',
+        function: toolDef.function,
+      });
+    }
+    logger.info('Connection', `MCP工具已注册`, {
+      deviceId: this.deviceId,
+      count: mcpTools.length,
+    });
+  }
+
+  /** 执行IoT工具 */
+  private async _executeIotTool(toolName: string, args: Record<string, any>, _ctx: ToolContext): Promise<ToolResult> {
+    try {
+      if (toolName.startsWith('get_')) {
+        const parts = toolName.split('_', 2);
+        if (parts.length >= 2) {
+          const rest = toolName.substring(parts[0]!.length + 1 + parts[1]!.length + 1);
+          const deviceName = parts[1]!;
+          const propertyName = rest;
+          const value = getIotStatus(this.iotDescriptors, deviceName, propertyName);
+          if (value !== null) {
+            const responseSuccess = args.response_success || '查询成功：{value}';
+            return {
+              success: true,
+              result: responseSuccess.replace('{value}', String(value)),
+              needsLLMResponse: false,
+            };
+          }
+          return {
+            success: false,
+            result: args.response_failure || `无法获取${deviceName}的状态`,
+          };
+        }
+      } else {
+        const parts = toolName.split('_', 1);
+        if (parts.length >= 1) {
+          const deviceName = parts[0]!;
+          const methodName = toolName.substring(deviceName.length + 1);
+          const controlParams: Record<string, any> = {};
+          for (const [k, v] of Object.entries(args)) {
+            if (k !== 'response_success' && k !== 'response_failure') {
+              controlParams[k] = v;
+            }
+          }
+          const sent = sendIotCommand(this.ws, this.iotDescriptors, deviceName, methodName, controlParams);
+          if (sent) {
+            let responseSuccess = args.response_success || '操作成功';
+            for (const [k, v] of Object.entries(controlParams)) {
+              responseSuccess = responseSuccess.replace(`{${k}}`, String(v));
+            }
+            return {
+              success: true,
+              result: responseSuccess,
+              needsLLMResponse: true,
+            };
+          }
+          return { success: false, result: args.response_failure || '操作失败' };
+        }
+      }
+      return { success: false, result: '无法解析IoT工具名称' };
+    } catch (e: any) {
+      return { success: false, result: args.response_failure || `操作失败: ${e.message}` };
+    }
+  }
+
+  /** 执行MCP工具 */
+  private async _executeMCPTool(toolName: string, args: Record<string, any>, _ctx: ToolContext): Promise<ToolResult> {
+    if (!this.mcpClient || !this.mcpClient.ready) {
+      return { success: false, result: 'MCP客户端未准备就绪' };
+    }
+    try {
+      const argsStr = JSON.stringify(args);
+      const result = await callMCPTool(this.ws, this.mcpClient, toolName, argsStr, 30);
+      return {
+        success: true,
+        result: String(result),
+        needsLLMResponse: true,
+      };
+    } catch (e: any) {
+      if (e.message?.includes('不存在')) {
+        return { success: false, result: e.message };
+      }
+      return { success: false, result: `MCP工具执行失败: ${e.message}` };
+    }
   }
 
   // ===== 音频处理管线 =====
@@ -261,6 +446,21 @@ export class ConnectionHandler {
     const text = await this.asr.speechToText(fullAudio, 16000).catch(() => '');
     if (!text.trim()) return;
     console.log(`[Connection] ASR: "${text}"`);
+
+    // ---- 设备绑定检查（对标 check_bind_device） ----
+    if (this.needBind) {
+      this._checkBindDevice();
+      return;
+    }
+
+    // ---- 输出字数限制检查（对标 check_device_output_limit） ----
+    if (this.maxOutputSize > 0 && this._checkOutputLimit()) {
+      this._sendSttAndStart('不好意思，我现在有点事情要忙，明天这个时候我们再聊，约好了哦！明天不见不散，拜拜！');
+      this._ttsOneSentence('不好意思，我现在有点事情要忙，明天这个时候我们再聊，约好了哦！明天不见不散，拜拜！');
+      this.closeAfterChat = true;
+      this._endChat();
+      return;
+    }
 
     // ---- 唤醒词检测（对标 checkWakeupWords） ----
     if (this.config.wakeup_words) {
@@ -378,9 +578,20 @@ export class ConnectionHandler {
   // ===== 工具调用处理（对标 _handle_function_result） =====
   private async _processToolCalls(toolCalls: ToolCall[], depth: number, streamedText: string): Promise<void> {
     console.log(`[Connection] 工具调用: ${toolCalls.map(tc => tc.function.name).join(', ')}`);
+
+    for (const tc of toolCalls) {
+      if (tc.function.name !== 'direct_answer') {
+        this._sendJson({ type: 'llm', text: `正在执行${tc.function.name}...`, state: 'tool_call' });
+      }
+    }
+
     this.dialogue.put({ role: 'assistant', content: '', tool_calls: toolCalls });
 
-    const ctx = { deviceId: this.deviceId, sessionId: this.sessionId };
+    const ctx: ToolContext = {
+      deviceId: this.deviceId,
+      sessionId: this.sessionId,
+      toolCallTimeout: this.config.tool_call_timeout || 30,
+    };
     const results = await executeToolCalls(toolCalls, ctx);
 
     // ---- 按 Action 类型分类处理（对标 Action.RESPONSE/REQLLM/RECORD/ERROR） ----
@@ -537,6 +748,18 @@ export class ConnectionHandler {
     } catch {}
   }
 
+  private _generateChatTitle(): void {
+    const apiUrl = process.env.MANAGER_API_URL;
+    const secret = process.env.SERVER_SECRET;
+    if (!apiUrl || !secret || !this.sessionId) return;
+    const url = `${apiUrl}/api/agent/chat-title/${this.sessionId}/generate`;
+    fetch(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(15000),
+    }).catch(() => {});
+  }
+
   // ===== 工具方法 =====
   private _sendJson(data: Record<string, any>): void {
     if (this.ws.readyState === WebSocket.OPEN) { try { this.ws.send(JSON.stringify(data)); } catch {} }
@@ -544,13 +767,57 @@ export class ConnectionHandler {
 
   onClose(): void {
     logger.info('Connection', `连接断开`, { deviceId: this.deviceId, sessionId: this.sessionId });
-    if (this.timeoutTask) { clearInterval(this.timeoutTask); }
+    if (this.timeoutTask) { clearInterval(this.timeoutTask); this.timeoutTask = null; }
     this._handleAbort();
     this.speechBuffer = []; this.dialogue.clear();
     if (this.memory && this.dialogue) {
       this.memory.saveMemory(this.dialogue.getAllMessages(), this.sessionId).catch(() => {});
     }
+    this._generateChatTitle();
+    if (this.mcpClient) {
+      this.mcpClient.destroy();
+      this.mcpClient = null;
+    }
+    this.iotDescriptors.clear();
+    this.iotToolsRegistered = false;
+    if (this.rateController) {
+      this.rateController.stopSending();
+      this.rateController = null;
+    }
+    this.flowControl = null;
+    this.llmAbortController = null;
   }
 
   onPong(): void { this.lastActivityTime = Date.now(); }
+
+  /** 设备绑定检查（对标 check_bind_device） */
+  private _checkBindDevice(): void {
+    if ((this as any).bind_code) {
+      const bindCode = String((this as any).bind_code);
+      if (bindCode.length === 6) {
+        const text = `请登录控制面板，输入${bindCode}，绑定设备。`;
+        this._sendSttAndStart(text);
+        this._ttsOneSentence(text);
+      } else {
+        this._sendSttAndStart('绑定码格式错误，请检查配置。');
+        this._ttsOneSentence('绑定码格式错误，请检查配置。');
+      }
+    } else {
+      const text = '没有找到该设备的版本信息，请正确配置OTA地址，然后重新编译固件。';
+      this._sendSttAndStart(text);
+      this._ttsOneSentence(text);
+    }
+  }
+
+  /** 输出字数限制检查（对标 check_device_output_limit） */
+  private _checkOutputLimit(): boolean {
+    const messages = this.dialogue.getAllMessages();
+    let totalChars = 0;
+    for (const msg of messages) {
+      if (msg.role === 'assistant' && msg.content) {
+        totalChars += msg.content.length;
+      }
+    }
+    return totalChars >= this.maxOutputSize;
+  }
 }

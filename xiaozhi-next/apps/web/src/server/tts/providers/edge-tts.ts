@@ -1,11 +1,16 @@
 /**
  * ============================================================
- * 微软 Edge TTS 提供者（免费，流式）
- * 对标旧Python: core/providers/tts/edge.py
+ * 微软 Edge TTS 提供者（免费，流式，WebSocket 协议）
+ * 对标旧Python: core/providers/tts/edge.py → edge_tts.Communicate
  *
- * 通过微软 Edge 浏览器 TTS API 进行语音合成
- * 完全免费，无需 API Key，支持 SSML
- * 格式：MP3 流，需解码为 PCM Float32
+ * 通过微软 Edge 浏览器 TTS WebSocket API 进行语音合成
+ * 完全免费，无需 API Key
+ *
+ * 实现原理（与 Python edge-tts 库一致）：
+ * 1. 向 Edge TTS 服务发起 WebSocket 连接
+ * 2. 发送 SSML 配置请求（含 ReqId、Timestamp）
+ * 3. 通过 WebSocket 接收音频数据块（MP3 格式）
+ * 4. 将 MP3 数据解码为 PCM Float32 供 Opus 编码器使用
  *
  * Edge TTS 支持的语音列表（中文）：
  *   zh-CN-XiaoxiaoNeural (女声-温柔)
@@ -32,43 +37,42 @@
  * ============================================================
  */
 
+import WebSocket from 'ws';
 import type { TTSProvider, TTSConfig } from '../../types';
 
-/**
- * Edge TTS 提供者
- *
- * 对标旧Python: class TTSProvider(TTSProviderBase) — edge_tts.Communicate 实现
- *
- * 实现原理：
- * Edge TTS 是通过微软 Edge 浏览器的 "大声朗读" 功能实现的。
- * API地址: https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1
- * 输入SSML → 输出多个音频数据块（MP3格式）
- */
+const EDGE_TTS_WS_URL =
+  'wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1' +
+  '?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4' +
+  '&ConnectionId=';
+
+const WSS_HEADERS: Record<string, string> = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+  'Origin': 'chrome-extension://jdiccldnimdaeeaclkmejddbjcnnjmo',
+  'Pragma': 'no-cache',
+  'Cache-Control': 'no-cache',
+  'Accept': '*/*',
+};
+
+function genReqId(): string {
+  return crypto.randomUUID().replace(/-/g, '');
+}
+
+function genTimestamp(): string {
+  const d = new Date();
+  return d.toUTCString().replace('GMT', 'GMT+0000 (Coordinated Universal Time)');
+}
+
 export class EdgeTTSProvider implements TTSProvider {
   readonly name = 'EdgeTTS';
 
-  /** 默认语音 */
   private defaultVoice: string;
-  /** 音频格式 */
   private outputFormat: string;
 
   constructor(config: TTSConfig) {
-    // 从配置中提取语音名称，默认为温柔女声
     this.defaultVoice = config.voice || config.voiceName || 'zh-CN-XiaoxiaoNeural';
-    // 输出格式：16kHz，32kbps，单声道，MP3
-    this.outputFormat = config.format || 'audio-16khz-32kbitrate-mono-mp3';
+    this.outputFormat = config.format || 'raw-16khz-16bit-mono-pcm';
   }
 
-  /**
-   * 流式文本转语音
-   *
-   * 对标旧Python: async def text_to_speak(self, text, output_file)
-   *
-   * @param text 要合成的文本
-   * @param voice 语音名称/角色
-   * @param config TTS参数（volume, rate, pitch）
-   * @returns 异步迭代器，逐个返回PCM Float32Array音频块
-   */
   async *textToSpeechStream(
     text: string,
     voice: string,
@@ -79,116 +83,166 @@ export class EdgeTTSProvider implements TTSProvider {
     const voiceName = voice || this.defaultVoice;
     const rate = config.rate ?? 1.0;
     const pitch = config.pitch ?? 0;
+    const reqId = genReqId();
 
-    // 构建 SSML (Speech Synthesis Markup Language)
     const ssml = this._buildSSML(text, voiceName, rate, pitch);
 
-    // 调用 Edge TTS API
-    const url = 'https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1' +
-      '?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4';
+    const connectionId = genReqId();
+    const wsUrl = EDGE_TTS_WS_URL + connectionId;
 
-    let response: Response;
+    let ws: WebSocket;
     try {
-      response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/ssml+xml',
-          'X-Microsoft-OutputFormat': this.outputFormat,
-        },
-        body: ssml,
-      });
+      ws = await this._connect(wsUrl);
     } catch (e: any) {
-      console.error(`[EdgeTTS] 请求失败: ${e.message}`);
-      // 返回静音帧作为降级处理
+      console.error(`[EdgeTTS] WebSocket连接失败: ${e.message}`);
       yield new Float32Array(960);
       return;
     }
-
-    if (!response.ok) {
-      console.error(`[EdgeTTS] API错误 ${response.status}`);
-      yield new Float32Array(960);
-      return;
-    }
-
-    if (!response.body) {
-      yield new Float32Array(960);
-      return;
-    }
-
-    // 解析响应流
-    // Edge TTS 返回 MP3 格式的音频块
-    // 每个音频块以WebSocket帧的二进制数据返回
-    const reader = response.body.getReader();
 
     try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      const audioChunks: Buffer[] = [];
+      let synthesisDone = false;
 
-        // value 是 Uint8Array，包含 MP3 数据
-        // 在开发模式下，直接将 MP3 数据传递回去
-        // 生产环境需 MP3 → PCM 解码（可用 audiobuffer-to-wav 等库）
-        const audioBlock = this._mp3ToPCMFloat32(value);
+      const audioPromise = new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Edge TTS 超时'));
+        }, 30000);
 
-        if (audioBlock.length > 0) {
-          yield audioBlock;
+        ws!.on('message', (data: WebSocket.Data) => {
+          const msg = typeof data === 'string' ? data : data.toString('utf-8');
+
+          if (msg.includes('Path:turn.start')) {
+            // 合成开始
+          } else if (msg.includes('Path:turn.end')) {
+            synthesisDone = true;
+            clearTimeout(timeout);
+            resolve();
+          }
+        });
+
+        ws!.on('error', (err) => {
+          clearTimeout(timeout);
+          reject(err);
+        });
+
+        ws!.on('close', () => {
+          clearTimeout(timeout);
+          if (!synthesisDone) resolve();
+        });
+      });
+
+      this._sendConfig(ws, reqId, this.outputFormat);
+      this._sendSSML(ws, reqId, ssml);
+
+      const binaryChunks: Buffer[] = [];
+      ws.on('message', (data: WebSocket.Data) => {
+        if (Buffer.isBuffer(data)) {
+          const headerEnd = data.indexOf('\r\n\r\n');
+          if (headerEnd !== -1) {
+            binaryChunks.push(data.subarray(headerEnd + 4));
+          } else {
+            binaryChunks.push(data);
+          }
+        }
+      });
+
+      await audioPromise;
+
+      try { ws.close(); } catch {}
+
+      if (binaryChunks.length > 0) {
+        const fullPcm = Buffer.concat(binaryChunks);
+        const pcmFloat = this._pcm16ToFloat32(fullPcm);
+        if (pcmFloat.length > 0) {
+          const CHUNK_SIZE = 960 * 6;
+          for (let i = 0; i < pcmFloat.length; i += CHUNK_SIZE) {
+            yield pcmFloat.subarray(i, Math.min(i + CHUNK_SIZE, pcmFloat.length));
+          }
         }
       }
-    } finally {
-      reader.releaseLock();
+    } catch (e: any) {
+      console.error(`[EdgeTTS] 合成失败: ${e.message}`);
+      try { ws.close(); } catch {}
+      yield new Float32Array(960);
     }
   }
 
-  /**
-   * 构建 SSML 请求体
-   * 对标旧Python: Edge TTS 的 ssml 构建方式
-   */
-  private _buildSSML(text: string, voice: string, rate: number, pitch: number): string {
-    // XML 转义
-    const escaped = this._escapeXml(text);
+  private _connect(url: string): Promise<WebSocket> {
+    return new Promise((resolve, reject) => {
+      const ws = new WebSocket(url, {
+        headers: WSS_HEADERS,
+        perMessageDeflate: false,
+      });
 
-    return `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" 
-              xmlns:mstts="https://www.w3.org/2001/mstts" xml:lang="zh-CN">
-      <voice name="${voice}">
-        <prosody rate="${rate >= 0.01 ? rate : 1.0}" pitch="${pitch >= -50 ? pitch + '%' : '0%'}">
-          ${escaped}
-        </prosody>
-      </voice>
-    </speak>`;
+      const timeout = setTimeout(() => {
+        ws.close();
+        reject(new Error('连接超时'));
+      }, 10000);
+
+      ws.on('open', () => {
+        clearTimeout(timeout);
+        resolve(ws);
+      });
+
+      ws.on('error', (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+    });
   }
 
-  /**
-   * MP3字节 → Float32 PCM 的简化转换
-   *
-   * 注意：这是简化的模拟转换，仅用于开发测试
-   * 生产环境需使用完整的 MP3 解码器（如 lamejs）
-   *
-   * 实现思路：
-   *   npm install lamejs
-   *   使用 Mp3Decoder 完整解码 MP3 → PCM Float32
-   */
-  private _mp3ToPCMFloat32(mp3Data: Uint8Array): Float32Array {
-    // TODO: 集成完整的 MP3 → PCM 解码
-    // 当前使用简化方案：假设 MP3 数据可直接近似为 PCM
-    // 生产环境请使用 lamejs 或 ffmpeg 进行转码
+  private _sendConfig(ws: WebSocket, reqId: string, format: string): void {
+    const timestamp = genTimestamp();
+    const configMsg = [
+      `X-Timestamp:${timestamp}`,
+      'Content-Type:application/json; charset=utf-8',
+      'Path:speech.config',
+      '',
+      `{"context":{"synthesis":{"audio":{"metadataoptions":{"sentenceBoundaryEnabled":"false","wordBoundaryEnabled":"true"},"outputFormat":"${format}"}}}}`,
+    ].join('\r\n');
+    ws.send(configMsg);
+  }
 
-    const numSamples = Math.floor(mp3Data.length / 2); // 粗略估计
+  private _sendSSML(ws: WebSocket, reqId: string, ssml: string): void {
+    const timestamp = genTimestamp();
+    const ssmlMsg = [
+      `X-RequestId:${reqId}`,
+      `X-Timestamp:${timestamp}Z`,
+      'Content-Type:application/ssml+xml',
+      `X-RequestId:${reqId}`,
+      'Path:ssml',
+      '',
+      ssml,
+    ].join('\r\n');
+    ws.send(ssmlMsg);
+  }
+
+  private _buildSSML(text: string, voice: string, rate: number, pitch: number): string {
+    const escaped = this._escapeXml(text);
+    const rateStr = rate >= 1 ? `+${Math.round((rate - 1) * 100)}%` : `${Math.round((rate - 1) * 100)}%`;
+    const pitchStr = pitch >= 0 ? `+${pitch}Hz` : `${pitch}Hz`;
+
+    return `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="zh-CN">
+  <voice name="${voice}">
+    <prosody rate="${rateStr}" pitch="${pitchStr}">
+      ${escaped}
+    </prosody>
+  </voice>
+</speak>`;
+  }
+
+  private _pcm16ToFloat32(pcmData: Buffer): Float32Array {
+    const numSamples = Math.floor(pcmData.length / 2);
     if (numSamples <= 0) return new Float32Array(0);
 
     const result = new Float32Array(numSamples);
-    for (let i = 0; i < numSamples && i * 2 + 1 < mp3Data.length; i++) {
-      const lo = mp3Data[i * 2]!;
-      const hi = mp3Data[i * 2 + 1]!;
-      let int16 = (hi << 8) | lo;
-      if (int16 >= 0x8000) int16 -= 0x10000;
+    for (let i = 0; i < numSamples; i++) {
+      let int16 = pcmData.readInt16LE(i * 2);
       result[i] = int16 / 32768.0;
     }
     return result;
   }
 
-  /**
-   * XML 特殊字符转义
-   */
   private _escapeXml(s: string): string {
     return s
       .replace(/&/g, '&amp;')

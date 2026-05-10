@@ -405,6 +405,8 @@ export interface AgentConfig {
   delete_audio?: boolean;
   /** 小智欢迎消息模板 */
   welcome_msg?: Record<string, any>;
+  /** 工具调用超时时间（秒），默认30 */
+  tool_call_timeout?: number;
 }
 
 // ==============================

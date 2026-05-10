@@ -17,6 +17,10 @@ import { handleGetWeather } from './functions/get-weather';
 import { handleGetTime } from './functions/get-time';
 import { handleExitIntent } from './functions/handle-exit-intent';
 import { handleGetNews } from './functions/get-news';
+import { handlePlayMusic } from './functions/play-music';
+import { handleChangeRole } from './functions/change-role';
+import { handleRAGSearch } from './functions/search-ragflow';
+import { handleHassGetState, handleHassSetState } from './functions/hass-controller';
 
 // ==============================
 // 工具执行结果
@@ -57,6 +61,8 @@ export interface ToolContext {
   deviceId: string;
   /** 当前会话ID */
   sessionId: string;
+  /** 工具调用超时时间（秒），默认30 */
+  toolCallTimeout?: number;
 }
 
 // ==============================
@@ -140,6 +146,90 @@ export function initPlugins(): void {
     },
   });
 
+  // 播放音乐
+  registerTool('play_music', handlePlayMusic, {
+    type: 'function',
+    function: {
+      name: 'play_music',
+      description: '播放音乐，用户要求听歌时调用此工具',
+      parameters: {
+        type: 'object',
+        properties: {
+          song: { type: 'string', description: '歌曲名称' },
+          artist: { type: 'string', description: '歌手名称（可选）' },
+        },
+        required: ['song'],
+      },
+    },
+  });
+
+  // 切换角色
+  registerTool('change_role', handleChangeRole, {
+    type: 'function',
+    function: {
+      name: 'change_role',
+      description: '切换AI助手的角色或人设，用户要求改变说话风格或角色时调用',
+      parameters: {
+        type: 'object',
+        properties: {
+          role: { type: 'string', description: '角色名称，如"猫娘"、"管家"、"老师"等' },
+          prompt: { type: 'string', description: '角色的详细描述或人设提示词' },
+        },
+      },
+    },
+  });
+
+  // RAG知识库搜索
+  registerTool('search_knowledge_base', handleRAGSearch, {
+    type: 'function',
+    function: {
+      name: 'search_knowledge_base',
+      description: '从知识库中搜索相关信息，当用户的问题可能需要特定领域知识时调用',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: '搜索查询内容' },
+          dataset: { type: 'string', description: '数据集ID（可选）' },
+        },
+        required: ['query'],
+      },
+    },
+  });
+
+  // Home Assistant 获取状态
+  registerTool('hass_get_state', handleHassGetState, {
+    type: 'function',
+    function: {
+      name: 'hass_get_state',
+      description: '获取Home Assistant中智能设备的状态，如灯光、开关、传感器等',
+      parameters: {
+        type: 'object',
+        properties: {
+          entity_id: { type: 'string', description: '实体ID，如light.living_room、sensor.temperature' },
+        },
+        required: ['entity_id'],
+      },
+    },
+  });
+
+  // Home Assistant 控制设备
+  registerTool('hass_set_state', handleHassSetState, {
+    type: 'function',
+    function: {
+      name: 'hass_set_state',
+      description: '控制Home Assistant中的智能设备，如开灯、关灯、调节温度等',
+      parameters: {
+        type: 'object',
+        properties: {
+          entity_id: { type: 'string', description: '实体ID，如light.living_room' },
+          service: { type: 'string', description: '服务名称，如turn_on、turn_off、toggle' },
+          service_data: { type: 'object', description: '服务参数，如亮度、颜色等' },
+        },
+        required: ['entity_id', 'service'],
+      },
+    },
+  });
+
   // ---- direct_answer 虚拟工具 ----
   // 对标旧Python: DIRECT_ANSWER_TOOL
   // 不是真实工具，是路由机制：将"调不调工具"的二选一变为"调哪个"的多选
@@ -168,7 +258,7 @@ export function initPlugins(): void {
 /**
  * 注册一个工具函数
  */
-function registerTool(
+export function registerTool(
   name: string,
   handler: ToolFunction,
   definition: ToolDefinition,
@@ -228,8 +318,22 @@ export async function executeToolCall(
   }
 
   try {
-    return await entry.handler(args, context);
+    const timeout = context.toolCallTimeout || 30;
+    const result = await Promise.race([
+      entry.handler(args, context),
+      new Promise<ToolResult>((_, reject) =>
+        setTimeout(() => reject(new Error('工具调用超时')), timeout * 1000),
+      ),
+    ]);
+    return result;
   } catch (e: any) {
+    if (e.message === '工具调用超时') {
+      console.warn(`[Plugins] 工具调用超时 [${name}]，超时时间: ${context.toolCallTimeout || 30}秒`);
+      return {
+        success: false,
+        result: '哎呀，网络遇到点问题，请稍后再试下！',
+      };
+    }
     console.error(`[Plugins] 工具执行失败 [${name}]: ${e.message}`);
     return {
       success: false,
