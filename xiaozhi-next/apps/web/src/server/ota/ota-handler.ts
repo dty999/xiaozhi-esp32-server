@@ -62,13 +62,14 @@ const FIRMWARE_DIR = process.env.FIRMWARE_DIR || path.join(process.cwd(), 'firmw
 /**
  * 处理 OTA 检查请求
  *
- * 对标旧Python: ota_handler.check_update()
+ * 对标固件规范: POST {ota_url}
  *
  * 请求格式：
- *   GET /xiaozhi/ota/check?platform=esp32-s3&version=0.9.0
+ *   POST /xiaozhi/ota/check
+ *   头: Device-Id, Client-Id, User-Agent, Accept-Language
  *
- * 响应格式：
- *   { "hasUpdate": true, "latest": { "version": "1.0.0", ... } }
+ * 响应格式（固件规范）：
+ *   { firmware, activation, mqtt, websocket, server_time }
  */
 export function handleOTACheck(req: IncomingMessage, res: ServerResponse): void {
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
@@ -86,21 +87,51 @@ export function handleOTACheck(req: IncomingMessage, res: ServerResponse): void 
   const latest = firmwares[firmwares.length - 1]!;
   const hasUpdate = _compareVersions(latest.version, currentVersion) > 0;
 
+  // 构建固件规范响应
+  const response: Record<string, any> = {};
+
+  if (hasUpdate) {
+    response.firmware = {
+      version: latest.version,
+      url: `/xiaozhi/ota/download?platform=${platform}&version=${latest.version}`,
+      force: 0,
+    };
+  }
+
+  // WebSocket 配置
+  const wsHost = process.env.WS_HOST || `ws://localhost:${process.env.WS_PORT || 8000}`;
+  response.websocket = {
+    url: `${wsHost}/xiaozhi/v1/`,
+    token: 'dev-token',
+    version: 1,
+  };
+
+  // MQTT 配置（如启用）
+  const mqttEndpoint = process.env.MQTT_ENDPOINT || '';
+  if (mqttEndpoint) {
+    const [host, portStr] = mqttEndpoint.split(':');
+    response.mqtt = {
+      endpoint: `${host}:${portStr || '8883'}`,
+      client_id: `xiaozhi_dev`,
+      username: `device`,
+      password: `dev-token`,
+      publish_topic: `device/test`,
+      keepalive: 240,
+    };
+  }
+
+  // 服务器时间
+  const now = new Date();
+  response.server_time = {
+    timestamp: now.getTime(),
+    timezone_offset: -now.getTimezoneOffset(),
+  };
+
   res.writeHead(200, {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
   });
-  res.end(JSON.stringify({
-    hasUpdate,
-    currentVersion,
-    latest: hasUpdate ? {
-      version: latest.version,
-      size: latest.size,
-      md5: latest.md5,
-      releaseNotes: latest.releaseNotes,
-      publishedAt: latest.publishedAt,
-    } : null,
-  }));
+  res.end(JSON.stringify(response));
 }
 
 /**

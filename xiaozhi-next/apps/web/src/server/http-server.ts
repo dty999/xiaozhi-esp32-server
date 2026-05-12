@@ -16,6 +16,8 @@
 
 import { createServer, IncomingMessage, ServerResponse } from 'http';
 import { handleOTACheck, handleOTADownload } from './ota/ota-handler';
+import { startMQTTServer } from './mqtt/mqtt-server';
+import { startUDPServer } from './udp/udp-server';
 import { logger } from './utils/logger';
 
 /** HTTP 监听端口 */
@@ -112,6 +114,20 @@ export function startHttpServer(): ReturnType<typeof createServer> {
     logger.info('HTTP', `辅助服务已启动: http://localhost:${HTTP_PORT}`);
     logger.info('HTTP', `OTA接口: http://localhost:${HTTP_PORT}/xiaozhi/ota/check`);
     logger.info('HTTP', `健康检查: http://localhost:${HTTP_PORT}/health`);
+
+    // 启动 MQTT 服务器
+    try {
+      startMQTTServer();
+    } catch (e: any) {
+      logger.warn('HTTP', `MQTT 服务器启动失败: ${e.message}`);
+    }
+
+    // 启动 UDP 服务器
+    try {
+      startUDPServer();
+    } catch (e: any) {
+      logger.warn('HTTP', `UDP 服务器启动失败: ${e.message}`);
+    }
   });
 
   return server;

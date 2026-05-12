@@ -108,11 +108,18 @@ export function startWebSocketServer(): WebSocketServer {
     }
 
     // 提取客户端 IP
-    const clientIp = 
-      (req.headers['x-real-ip'] as string) || 
-      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || 
-      req.socket.remoteAddress || 
+    const clientIp =
+      (req.headers['x-real-ip'] as string) ||
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      req.socket.remoteAddress ||
       'unknown';
+
+    // 提取协议版本（二进制音频协议版本 1/2/3）
+    const protocolVersion = parseInt(
+      (req.headers['Protocol-Version'] as string) ||
+      (req.headers['protocol-version'] as string) ||
+      '1'
+    );
 
     // ---- 2. 认证 ----
     // 对标旧Python: _handle_auth()
@@ -135,7 +142,7 @@ export function startWebSocketServer(): WebSocketServer {
     }
 
     // ---- 4. 创建连接处理器 ----
-    const handler = new ConnectionHandler(ws, deviceId, clientIp);
+    const handler = new ConnectionHandler(ws, deviceId, clientIp, protocolVersion);
     activeConnections.set(deviceId, handler);
 
     // 异步初始化（不阻塞WebSocket握手）

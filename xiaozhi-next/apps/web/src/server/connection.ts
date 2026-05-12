@@ -64,6 +64,8 @@ export class ConnectionHandler {
   // ---- 基础属性 ----
   private ws: WebSocket; readonly deviceId: string; readonly clientIp: string;
   readonly sessionId: string;
+  /** 二进制音频协议版本 (1/2/3) */
+  readonly protocolVersion: number;
   private config!: AgentConfig;
   private vad: SileroVAD; private silenceDetector: SilenceDetector;
   private asr: ASRProvider | null = null; private llm: LLMProvider | null = null;
@@ -106,16 +108,21 @@ export class ConnectionHandler {
   private bindCompleted = false;
   private readConfigFromApi = false;
 
-  constructor(ws: WebSocket, deviceId: string, clientIp: string) {
+  constructor(ws: WebSocket, deviceId: string, clientIp: string, protocolVersion = 1) {
     this.ws = ws; this.deviceId = deviceId; this.clientIp = clientIp;
     this.sessionId = uuidv4();
+    this.protocolVersion = protocolVersion;
     this.vad = SileroVAD.getInstance();
     this.silenceDetector = new SilenceDetector(200);
     this.opusCodec = new OpusCodec();
     this.dialogue = new DialogueManager(20);
-    this.welcomeMsg = { type: 'hello', transport: 'ws', session_id: this.sessionId,
-      audio_params: { format: 'opus', sample_rate: 16000, channels: 1, frame_duration: 60 } };
-    logger.info('Connection', `新连接建立`, { deviceId, clientIp, sessionId: this.sessionId });
+    this.welcomeMsg = {
+      type: 'hello',
+      transport: 'websocket',
+      session_id: this.sessionId,
+      audio_params: { format: 'opus', sample_rate: 24000, channels: 1, frame_duration: 60 },
+    };
+    logger.info('Connection', `新连接建立`, { deviceId, clientIp, sessionId: this.sessionId, protocolVersion });
   }
 
   // ===== 初始化 =====
@@ -207,8 +214,24 @@ export class ConnectionHandler {
     this.lastActivityTime = Date.now();
     if (data.length === 0) return;
     try {
-      if (data[0] === 0x7B) { const msg = JSON.parse(data.toString()); this._routeMessage(msg); }
-      else { this._handleAudioFrame(data); }
+      // 根据协议版本解析二进制帧
+      if (data[0] === 0x7B) {
+        // JSON 消息（以 '{' 开头）
+        const msg = JSON.parse(data.toString());
+        this._routeMessage(msg);
+      } else if (this.protocolVersion === 1) {
+        // 版本 1：直接传输原始 OPUS 数据
+        this._handleAudioFrame(data);
+      } else if (this.protocolVersion === 2) {
+        // 版本 2：带时间戳的二进制协议
+        this._handleBinaryProtocol2(data);
+      } else if (this.protocolVersion === 3) {
+        // 版本 3：简化头
+        this._handleBinaryProtocol3(data);
+      } else {
+        // 默认按版本 1 处理
+        this._handleAudioFrame(data);
+      }
     } catch {}
   }
 
@@ -226,8 +249,36 @@ export class ConnectionHandler {
 
   // ===== Hello 握手（对标 helloHandle） =====
   private _handleHello(msg: Record<string, any>): void {
-    if (msg.audio_params) { this.welcomeMsg.audio_params = msg.audio_params; }
-    this.welcomeMsg.transport = msg.transport || 'ws';
+    if (msg.audio_params) {
+      // 合并设备的 audio_params，但服务器下行采样率固定为 24000
+      this.welcomeMsg.audio_params = {
+        ...msg.audio_params,
+        sample_rate: 24000,
+      };
+    }
+    this.welcomeMsg.transport = msg.transport || 'websocket';
+
+    // 如果设备请求 UDP 传输（MQTT 模式下），添加 UDP 配置
+    if (msg.transport === 'udp') {
+      try {
+        const { registerUDPSession } = require('./udp/udp-server');
+        const clientIp = this.clientIp;
+        const clientPort = 8080; // 设备默认端口
+        const { generateCryptoParams } = require('./udp/aes-ctr');
+        const { key, nonce } = generateCryptoParams();
+        const udpInfo = registerUDPSession(this.deviceId, key, nonce, clientIp, clientPort);
+
+        (this.welcomeMsg as any).udp = {
+          server: udpInfo.server,
+          port: udpInfo.port,
+          key,
+          nonce,
+        };
+      } catch (e: any) {
+        logger.warn('Connection', `注册 UDP 会话失败: ${e.message}`, { deviceId: this.deviceId });
+      }
+    }
+
     if (msg.features) {
       this.features = msg.features;
       if (msg.features.mcp) {
@@ -242,10 +293,19 @@ export class ConnectionHandler {
   // ===== Listen 监听状态（对标 listenMessageHandler） =====
   private async _handleListen(msg: Record<string, any>): Promise<void> {
     if (msg.mode) { this.listenMode = msg.mode; }
-    if (msg.state === 'start') { this.isListening = true; this.clientIsSpeaking = true; }
-    else if (msg.state === 'stop') {
+    if (msg.state === 'start') {
+      this.isListening = true; this.clientIsSpeaking = true;
+    } else if (msg.state === 'stop') {
       this.isListening = false; this.clientIsSpeaking = false;
       if (this.listenMode === 'manual' && this.speechBuffer.length > 0) { await this._handleSpeechEnd(); }
+    } else if (msg.state === 'detect') {
+      // 唤醒词检测
+      this._sendJson({ type: 'stt', text: msg.text || '', session_id: this.sessionId });
+      // 发送唤醒回复
+      const reply = WAKEUP_RESPONSES[Math.floor(Math.random() * WAKEUP_RESPONSES.length)]!;
+      this._sendSttAndStart(reply);
+      this._ttsOneSentence(reply);
+      this.dialogue.put({ role: 'assistant', content: reply });
     }
   }
 
@@ -437,6 +497,90 @@ export class ConnectionHandler {
     } catch { this.speechBuffer = []; }
   }
 
+  // ===== 二进制协议版本 2（带时间戳）=====
+  private async _handleBinaryProtocol2(data: Buffer): Promise<void> {
+    // struct BinaryProtocol2 {
+    //     uint16_t version;        // 协议版本 (大端序)
+    //     uint16_t type;           // 0=OPUS, 1=JSON
+    //     uint32_t reserved;       // 保留
+    //     uint32_t timestamp;      // 时间戳毫秒 (大端序)
+    //     uint32_t payload_size;   // 负载大小 (大端序)
+    //     uint8_t  payload[];      // 变长负载
+    // }
+    if (data.length < 16) return;
+    const version = data.readUInt16BE(0);
+    const type = data.readUInt16BE(2);
+    // const reserved = data.readUInt32BE(4);
+    // const timestamp = data.readUInt32BE(8);
+    const payloadSize = data.readUInt32BE(12);
+    const payload = data.slice(16, 16 + payloadSize);
+
+    if (type === 0) {
+      // OPUS 音频
+      await this._handleAudioFrame(payload);
+    } else if (type === 1) {
+      // JSON 消息
+      try {
+        const msg = JSON.parse(payload.toString());
+        this._routeMessage(msg);
+      } catch {}
+    }
+  }
+
+  // ===== 二进制协议版本 3（简化头）=====
+  private async _handleBinaryProtocol3(data: Buffer): Promise<void> {
+    // struct BinaryProtocol3 {
+    //     uint8_t  type;           // 消息类型
+    //     uint8_t  reserved;       // 保留
+    //     uint16_t payload_size;   // 负载大小 (大端序)
+    //     uint8_t  payload[];      // 变长负载
+    // }
+    if (data.length < 4) return;
+    const type = data.readUInt8(0);
+    // const reserved = data.readUInt8(1);
+    const payloadSize = data.readUInt16BE(2);
+    const payload = data.slice(4, 4 + payloadSize);
+
+    if (type === 0) {
+      // OPUS 音频
+      await this._handleAudioFrame(payload);
+    } else if (type === 1) {
+      // JSON 消息
+      try {
+        const msg = JSON.parse(payload.toString());
+        this._routeMessage(msg);
+      } catch {}
+    }
+  }
+
+  /** 发送二进制音频帧（带协议头） */
+  private async _sendAudioFrame(opusData: Buffer): Promise<void> {
+    if (this.ws.readyState !== WebSocket.OPEN) return;
+
+    if (this.protocolVersion === 1) {
+      // 版本 1：直接发送 OPUS 数据
+      this.ws.send(opusData);
+    } else if (this.protocolVersion === 2) {
+      // 版本 2：带时间戳的二进制协议
+      const header = Buffer.alloc(16);
+      header.writeUInt16BE(2, 0);        // version
+      header.writeUInt16BE(0, 2);        // type = OPUS
+      header.writeUInt32BE(0, 4);        // reserved
+      header.writeUInt32BE(Date.now(), 8); // timestamp
+      header.writeUInt32BE(opusData.length, 12); // payload_size
+      this.ws.send(Buffer.concat([header, opusData]));
+    } else if (this.protocolVersion === 3) {
+      // 版本 3：简化头
+      const header = Buffer.alloc(4);
+      header.writeUInt8(0, 0);           // type = OPUS
+      header.writeUInt8(0, 1);           // reserved
+      header.writeUInt16BE(opusData.length, 2); // payload_size
+      this.ws.send(Buffer.concat([header, opusData]));
+    } else {
+      this.ws.send(opusData);
+    }
+  }
+
   private async _handleSpeechEnd(): Promise<void> {
     if (this.speechBuffer.length === 0) return;
     this.clientIsSpeaking = false; this.silenceDetector.reset();
@@ -545,12 +689,18 @@ export class ConnectionHandler {
           fullResponse += token;
           // ---- 情绪表情提取（每轮首个非空token） ----
           if (this.emotionFlag) {
-            const { emotion } = extractEmotion(token);
-            if (emotion) { this._sendJson({ type: 'emotion', emoji: emotion }); }
+            const { emotion, text: cleanToken } = extractEmotion(token);
+            if (emotion) {
+              // 固件规范要求 emotion 在 llm 消息中传递
+              this._sendJson({ type: 'llm', emotion, text: cleanToken, state: 'sentence_start' });
+            } else {
+              this._sendJson({ type: 'llm', text: token, state: 'sentence_start' });
+            }
             this.emotionFlag = false;
+          } else {
+            // 发送字幕
+            this._sendJson({ type: 'llm', text: token, state: 'sentence_start' });
           }
-          // 发送字幕
-          this._sendJson({ type: 'llm', text: token, state: 'sentence_start' });
           // 按标点分句触发TTS
           this.ttsTextBuffer += token;
           if (TTS_TRIGGER_PUNCTUATIONS.has(token[token.length - 1]!)) {
@@ -692,7 +842,7 @@ export class ConnectionHandler {
 
           // 启动后台发送循环
           rateCtrl.startSending(async (opusFrame: Buffer) => {
-            if (this.ws.readyState === WebSocket.OPEN) { this.ws.send(opusFrame); }
+            await this._sendAudioFrame(opusFrame);
           });
 
           for await (const audioChunk of this.tts!.textToSpeechStream(cleanText, voice, {
@@ -704,7 +854,7 @@ export class ConnectionHandler {
             if (fc) {
               // 预缓冲前5帧直接发送
               if (fc.packetCount < PRE_BUFFER_COUNT) {
-                if (this.ws.readyState === WebSocket.OPEN) { this.ws.send(opusFrame); }
+                await this._sendAudioFrame(opusFrame);
                 fc.packetCount++;
               } else {
                 rateCtrl.addAudio(opusFrame);
@@ -725,7 +875,40 @@ export class ConnectionHandler {
     this._sendJson({ type: 'tts', state: 'stop' });
     this._reportChatHistory();
     if (this.closeAfterChat) {
-      setTimeout(() => { if (this.ws.readyState === WebSocket.OPEN) this.ws.close(); }, 3000);
+      setTimeout(() => { this._sendGoodbye(); }, 3000);
+    }
+  }
+
+  // ===== 服务器主动发送 goodbye（MQTT 断开）=====
+  sendGoodbye(): void {
+    this._sendJson({ type: 'goodbye', session_id: this.sessionId });
+    setTimeout(() => {
+      if (this.ws.readyState === WebSocket.OPEN) this.ws.close();
+    }, 1000);
+  }
+  private _sendGoodbye(): void { this.sendGoodbye(); }
+
+  // ===== 发送 alert 警告通知 =====
+  sendAlert(status: string, message: string, emotion?: string): void {
+    this._sendJson({
+      type: 'alert',
+      session_id: this.sessionId,
+      status,
+      message,
+      ...(emotion ? { emotion } : {}),
+    });
+  }
+
+  // ===== 发送 system 指令 =====
+  sendSystemCommand(command: string): void {
+    this._sendJson({
+      type: 'system',
+      session_id: this.sessionId,
+      command,
+    });
+    // 处理 reboot 指令
+    if (command === 'reboot') {
+      setTimeout(() => { this._sendGoodbye(); }, 2000);
     }
   }
 

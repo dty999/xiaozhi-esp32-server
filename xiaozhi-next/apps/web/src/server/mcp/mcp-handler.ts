@@ -18,16 +18,29 @@ export function sendMCPMessage(ws: WebSocket, payload: Record<string, any>): voi
 }
 
 export function sendMCPInitialize(ws: WebSocket): void {
+  // 从环境变量获取 vision 配置
+  const visionUrl = process.env.MCP_VISION_URL || '';
+  const visionToken = process.env.MCP_VISION_TOKEN || '';
+
+  const capabilities: Record<string, any> = {
+    roots: { listChanged: true },
+    sampling: {},
+  };
+
+  if (visionUrl) {
+    capabilities.vision = {
+      url: visionUrl,
+      ...(visionToken ? { token: visionToken } : {}),
+    };
+  }
+
   const payload = {
     jsonrpc: '2.0',
     id: MCP_INITIALIZE_ID,
     method: 'initialize',
     params: {
       protocolVersion: '2024-11-05',
-      capabilities: {
-        roots: { listChanged: true },
-        sampling: {},
-      },
+      capabilities,
       clientInfo: {
         name: 'XiaozhiClient',
         version: '1.0.0',
