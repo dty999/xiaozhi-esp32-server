@@ -20,7 +20,7 @@ import { ofetch } from 'ofetch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -144,18 +144,18 @@ export default function ReplacementPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <FileText size={24} />替换词管理
+      <div className="flex justify-between items-center mb-5">
+        <h1 className="text-xl font-semibold flex items-center gap-2">
+          <FileText size={20} strokeWidth={1.8} />替换词管理
         </h1>
         <div className="flex gap-2">
           {selectedIds.size > 0 && (
-            <Button variant="destructive" onClick={() => handleDelete(Array.from(selectedIds))}>
-              <Trash2 size={16} className="mr-1" />删除 ({selectedIds.size})
+            <Button variant="destructive" size="sm" className="h-7" onClick={() => handleDelete(Array.from(selectedIds))}>
+              <Trash2 size={14} strokeWidth={1.8} className="mr-1" />删除 ({selectedIds.size})
             </Button>
           )}
-          <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>
-            <Plus size={16} className="mr-1" />新增文件
+          <Button size="sm" className="h-7" onClick={() => { setEditing(null); setDialogOpen(true); }}>
+            <Plus size={14} strokeWidth={1.8} className="mr-1" />新增文件
           </Button>
         </div>
       </div>
@@ -178,7 +178,7 @@ export default function ReplacementPage() {
       ) : (
         <div className="space-y-2">
           {data.map((row: any) => (
-            <Card key={row.id} className="hover:shadow-sm">
+            <Card key={row.id} className="transition-colors hover:border-primary/15">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -192,7 +192,7 @@ export default function ReplacementPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{row.fileName || '-'}</span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs px-2 py-0.5 bg-muted rounded text-muted-foreground">
                           {row.wordCount ?? '-'} 条
                         </span>
                       </div>
@@ -222,15 +222,15 @@ export default function ReplacementPage() {
 
                   <div className="flex gap-1 ml-4 flex-shrink-0">
                     {row.content && (
-                      <Button size="sm" variant="outline" onClick={() => handleDownload(row.id, row.fileName)}>
-                        <Download size={14} className="mr-1" />下载
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => handleDownload(row.id, row.fileName)}>
+                        <Download size={14} strokeWidth={1.8} className="mr-1" />下载
                       </Button>
                     )}
-                    <Button size="sm" variant="ghost" onClick={() => { setEditing(row); setDialogOpen(true); }}>
-                      <Pencil size={14} />
+                    <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => { setEditing(row); setDialogOpen(true); }}>
+                      <Pencil size={14} strokeWidth={1.8} />
                     </Button>
-                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete([row.id])}>
-                      <Trash2 size={14} />
+                    <Button size="sm" variant="ghost" className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/5" onClick={() => handleDelete([row.id])}>
+                      <Trash2 size={14} strokeWidth={1.8} />
                     </Button>
                   </div>
                 </div>
@@ -241,7 +241,7 @@ export default function ReplacementPage() {
       )}
 
       {/* 分页 */}
-      <div className="flex items-center justify-between mt-4">
+      <div className="flex items-center justify-between mt-5">
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">每页</span>
           <select
@@ -256,15 +256,23 @@ export default function ReplacementPage() {
 
         {totalPages > 1 && (
           <div className="flex items-center gap-1">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(1)}>首页</Button>
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-              <ChevronLeft size={14} />
+            <Button variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+              <ChevronLeft size={14} strokeWidth={1.8} />
             </Button>
-            <span className="text-sm text-muted-foreground px-2">{page} / {totalPages}</span>
-            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-              <ChevronRight size={14} />
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+              <Button
+                key={p}
+                variant={p === page ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 w-7 p-0 text-xs"
+                onClick={() => setPage(p)}
+              >
+                {p}
+              </Button>
+            ))}
+            <Button variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+              <ChevronRight size={14} strokeWidth={1.8} />
             </Button>
-            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(totalPages)}>末页</Button>
           </div>
         )}
 
@@ -443,13 +451,12 @@ function ReplacementWordDialog({ open, editing, onClose, onSaved, authHeaders }:
             </div>
           )}
 
-          <Button
-            onClick={handleSubmit}
-            disabled={saving || !fileName.trim() || isOverLimit}
-            className="w-full"
-          >
-            {saving ? '保存中...' : '保存'}
-          </Button>
+          <DialogFooter>
+            <Button variant="outline" size="sm" className="h-8" onClick={onClose}>取消</Button>
+            <Button size="sm" className="h-8" onClick={handleSubmit} disabled={saving || !fileName.trim() || isOverLimit}>
+              {saving ? '保存中...' : '保存'}
+            </Button>
+          </DialogFooter>
         </div>
       </DialogContent>
     </Dialog>

@@ -20,10 +20,10 @@ import { ofetch } from 'ofetch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Music, Plus, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Music, Plus, Pencil, Trash2, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { useAuthStore } from '@/hooks/useAuth';
 
 export default function TimbrePage() {
@@ -65,12 +65,12 @@ export default function TimbrePage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Music size={24} />音色管理
+      <div className="flex justify-between items-center mb-5">
+        <h1 className="text-xl font-semibold flex items-center gap-2">
+          <Music size={20} strokeWidth={1.8} />音色管理
         </h1>
-        <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>
-          <Plus size={16} className="mr-1" />新增音色
+        <Button size="sm" className="h-7" onClick={() => { setEditing(null); setDialogOpen(true); }}>
+          <Plus size={14} strokeWidth={1.8} className="mr-1" />新增音色
         </Button>
       </div>
 
@@ -79,8 +79,11 @@ export default function TimbrePage() {
           placeholder="搜索音色名称..."
           value={keyword}
           onChange={(e) => { setKeyword(e.target.value); setPage(1); }}
-          className="max-w-xs"
+          className="max-w-xs h-8"
         />
+        <Button variant="outline" size="sm" className="h-8" onClick={() => { setPage(1); fetchData(); }}>
+          <Search size={14} strokeWidth={1.8} className="mr-1" />搜索
+        </Button>
       </div>
 
       {loading ? (
@@ -90,17 +93,17 @@ export default function TimbrePage() {
       ) : (
         <div className="space-y-3">
           {data.map((row: any) => (
-            <Card key={row.id} className="hover:shadow-sm">
+            <Card key={row.id} className="transition-colors hover:border-primary/15">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium">{row.name || '-'}</span>
                       <span className="text-xs px-2 py-0.5 bg-muted rounded text-muted-foreground">
                         排序: {row.sort ?? 0}
                       </span>
                     </div>
-                    <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground flex-wrap">
+                    <div className="flex items-center gap-x-4 gap-y-0.5 mt-1.5 text-xs text-muted-foreground flex-wrap">
                       <span>ID: {row.id}</span>
                       <span>TTS模型: {row.ttsModelId || '-'}</span>
                       <span>音色代码: {row.ttsVoice || row.voiceCode || '-'}</span>
@@ -114,12 +117,12 @@ export default function TimbrePage() {
                     {(row.voiceDemo || row.referenceAudio) && (
                       <div className="flex gap-2 mt-1">
                         {row.voiceDemo && (
-                          <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded">
+                          <span className="text-xs px-2 py-0.5 bg-green-50 text-green-700 border border-green-100 rounded-md">
                             有演示音频
                           </span>
                         )}
                         {row.referenceAudio && (
-                          <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                          <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-md">
                             有参考音频
                           </span>
                         )}
@@ -130,17 +133,18 @@ export default function TimbrePage() {
                     <Button
                       size="sm"
                       variant="ghost"
+                      className="h-7 px-2"
                       onClick={() => { setEditing(row); setDialogOpen(true); }}
                     >
-                      <Pencil size={14} />
+                      <Pencil size={14} strokeWidth={1.8} />
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="text-destructive"
+                      className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/5"
                       onClick={() => handleDelete(row.id)}
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={14} strokeWidth={1.8} />
                     </Button>
                   </div>
                 </div>
@@ -152,19 +156,23 @@ export default function TimbrePage() {
 
       {/* 分页 */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-4">
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(1)}>
-            首页
+        <div className="flex justify-center gap-1.5 mt-5">
+          <Button variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+            <ChevronLeft size={14} strokeWidth={1.8} />
           </Button>
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-            <ChevronLeft size={14} />
-          </Button>
-          <span className="text-sm text-muted-foreground">{page} / {totalPages}</span>
-          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-            <ChevronRight size={14} />
-          </Button>
-          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(totalPages)}>
-            末页
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+            <Button
+              key={p}
+              variant={p === page ? 'default' : 'outline'}
+              size="sm"
+              className="h-7 w-7 p-0 text-xs"
+              onClick={() => setPage(p)}
+            >
+              {p}
+            </Button>
+          ))}
+          <Button variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+            <ChevronRight size={14} strokeWidth={1.8} />
           </Button>
         </div>
       )}
@@ -398,9 +406,12 @@ function TimbreDialog({ open, editing, onClose, onSaved, authHeaders }: {
             />
           </div>
 
-          <Button onClick={handleSubmit} disabled={loading || !form.name || !form.ttsModelId} className="w-full">
-            {loading ? '保存中...' : '保存'}
-          </Button>
+          <DialogFooter>
+            <Button variant="outline" size="sm" className="h-8" onClick={onClose}>取消</Button>
+            <Button size="sm" className="h-8" onClick={handleSubmit} disabled={loading || !form.name || !form.ttsModelId}>
+              {loading ? '保存中...' : '保存'}
+            </Button>
+          </DialogFooter>
         </div>
       </DialogContent>
     </Dialog>

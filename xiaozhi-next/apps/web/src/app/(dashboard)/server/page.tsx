@@ -79,12 +79,12 @@ export default function ServerPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Server size={24} />服务端管理
+      <div className="flex justify-between items-center mb-5">
+        <h1 className="text-xl font-semibold flex items-center gap-2">
+          <Server size={20} strokeWidth={1.8} />服务端管理
         </h1>
-        <Button variant="outline" size="sm" onClick={fetchServers} disabled={loading}>
-          <RefreshCw size={14} className={`mr-1 ${loading ? 'animate-spin' : ''}`} />刷新
+        <Button variant="outline" size="sm" className="h-7" onClick={fetchServers} disabled={loading}>
+          <RefreshCw size={13} strokeWidth={1.8} className={`mr-1 ${loading ? 'animate-spin' : ''}`} />刷新
         </Button>
       </div>
 
@@ -110,49 +110,54 @@ export default function ServerPage() {
       ) : (
         <div className="space-y-3">
           {servers.map(s => (
-            <Card key={s.id} className="hover:shadow-sm">
+            <Card key={s.id} className="transition-colors hover:border-primary/15">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium">{s.name}</span>
-                      <Badge variant={s.status === 'running' ? 'default' : 'secondary'} className="text-xs">
-                        {s.status === 'running'
-                          ? <><Wifi size={12} className="mr-1" />运行中</>
-                          : <><WifiOff size={12} className="mr-1" />已停止</>
-                        }
-                      </Badge>
+                      {s.status === 'running' ? (
+                        <Badge className="bg-emerald-500/90 text-white border-0 text-[10px]">
+                          <Wifi size={10} strokeWidth={2.5} className="mr-0.5" />运行中
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-[10px]">
+                          <WifiOff size={10} strokeWidth={2.5} className="mr-0.5" />已停止
+                        </Badge>
+                      )}
                     </div>
-                    <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                      <span className="font-mono text-xs">{s.type?.toUpperCase()}</span>
-                      <span className="font-mono text-xs">{s.address}</span>
+                    <div className="flex gap-x-4 gap-y-0.5 mt-1.5 text-xs text-muted-foreground flex-wrap">
+                      <span className="font-mono">{s.type?.toUpperCase()}</span>
+                      <span className="font-mono">{s.address}</span>
                     </div>
                   </div>
 
-                  <div className="flex gap-2 ml-4 flex-shrink-0">
-                    {/* 重启 */}
+                  <div className="flex gap-1.5 ml-4 flex-shrink-0">
+                    <!-- 重启 -->
                     <Button
                       size="sm"
                       variant="outline"
+                      className="h-7 text-xs"
                       onClick={() => handleAction(s, 'restart')}
                       disabled={actionLoading === `${s.id}_restart`}
                     >
                       {actionLoading === `${s.id}_restart`
-                        ? <Loader2 size={14} className="mr-1 animate-spin" />
-                        : <RefreshCw size={14} className="mr-1" />
+                        ? <Loader2 size={13} strokeWidth={1.8} className="mr-1 animate-spin" />
+                        : <RefreshCw size={13} strokeWidth={1.8} className="mr-1" />
                       }
                       重启
                     </Button>
-                    {/* 更新配置 */}
+                    <!-- 更新配置 -->
                     <Button
                       size="sm"
                       variant="outline"
+                      className="h-7 text-xs"
                       onClick={() => handleAction(s, 'update_config')}
                       disabled={actionLoading === `${s.id}_update_config`}
                     >
                       {actionLoading === `${s.id}_update_config`
-                        ? <Loader2 size={14} className="mr-1 animate-spin" />
-                        : <FileCog size={14} className="mr-1" />
+                        ? <Loader2 size={13} strokeWidth={1.8} className="mr-1 animate-spin" />
+                        : <FileCog size={13} strokeWidth={1.8} className="mr-1" />
                       }
                       更新配置
                     </Button>
