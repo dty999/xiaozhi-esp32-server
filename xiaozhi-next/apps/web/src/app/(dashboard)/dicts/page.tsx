@@ -122,8 +122,8 @@ export default function DictsPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Database size={24} />字典管理
+        <h1 className="text-xl font-semibold flex items-center gap-2">
+          <Database size={20} strokeWidth={1.8} />字典管理
         </h1>
       </div>
 
@@ -230,7 +230,7 @@ export default function DictsPage() {
             ) : (
               <div className="space-y-2">
                 {dataList.map(d => (
-                  <Card key={d.id} className="hover:shadow-sm">
+                  <Card key={d.id} className="transition-colors hover:border-primary/15">
                     <CardContent className="p-3 flex items-center justify-between">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
                         <button onClick={() => {
@@ -271,11 +271,11 @@ export default function DictsPage() {
           {selectedType && dataTotalPages > 1 && (
             <div className="p-2 border-t flex items-center justify-center gap-1">
               <Button variant="outline" size="sm" disabled={dataPage <= 1} onClick={() => setDataPage(1)}>首页</Button>
-              <Button variant="outline" size="sm" disabled={dataPage <= 1} onClick={() => setDataPage(p => p - 1)}>
+              <Button variant="outline" size="sm" disabled={dataPage <= 1} onClick={() => setDataPage(p => p - 1)} className="h-7 w-7 p-0">
                 <ChevronLeft size={14} />
               </Button>
               <span className="text-xs text-muted-foreground px-2">{dataPage} / {dataTotalPages}</span>
-              <Button variant="outline" size="sm" disabled={dataPage >= dataTotalPages} onClick={() => setDataPage(p => p + 1)}>
+              <Button variant="outline" size="sm" disabled={dataPage >= dataTotalPages} onClick={() => setDataPage(p => p + 1)} className="h-7 w-7 p-0">
                 <ChevronRight size={14} />
               </Button>
               <select

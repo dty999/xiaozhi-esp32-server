@@ -98,27 +98,30 @@ export default function LoginPage() {
   };
 
   return (
-    <Card className="shadow-lg">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl">控制台</CardTitle>
+    <Card className="shadow-md border">
+      <CardHeader className="text-center pb-4">
+        <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center mx-auto mb-3">
+          <span className="text-primary-foreground text-sm font-bold">XZ</span>
+        </div>
+        <CardTitle className="text-xl">控制台</CardTitle>
         <p className="text-sm text-muted-foreground mt-1">ESP32 AI 智能体管理</p>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* 模式切换 */}
-        <div className="flex gap-2">
+        <div className="flex gap-1 p-0.5 bg-muted rounded-md">
           <Button
-            variant={mode === 'username' ? 'default' : 'outline'}
+            variant={mode === 'username' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setMode('username')}
-            className="flex-1"
+            className="flex-1 h-7 text-xs font-medium"
           >
             用户名登录
           </Button>
           <Button
-            variant={mode === 'phone' ? 'default' : 'outline'}
+            variant={mode === 'phone' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setMode('phone')}
-            className="flex-1"
+            className="flex-1 h-7 text-xs font-medium"
           >
             手机号登录
           </Button>
@@ -146,7 +149,7 @@ export default function LoginPage() {
             className="flex-1"
           />
           <div
-            className="w-32 h-9 cursor-pointer border rounded overflow-hidden flex-shrink-0"
+            className="w-28 h-9 cursor-pointer border rounded-md overflow-hidden flex-shrink-0"
             dangerouslySetInnerHTML={{ __html: captchaSvg }}
             onClick={fetchCaptcha}
           />
@@ -154,13 +157,13 @@ export default function LoginPage() {
 
         {error && <p className="text-sm text-destructive">{error}</p>}
 
-        <Button className="w-full" onClick={handleLogin} disabled={loading}>
+        <Button className="w-full h-9" onClick={handleLogin} disabled={loading}>
           {loading ? '登录中...' : '登 录'}
         </Button>
 
         <div className="flex justify-between text-sm">
-          <Link href="/register" className="text-primary hover:underline">注册账号</Link>
-          <Link href="/forgot-password" className="text-primary hover:underline">忘记密码</Link>
+          <Link href="/register" className="text-primary hover:underline text-xs">注册账号</Link>
+          <Link href="/forgot-password" className="text-primary hover:underline text-xs">忘记密码</Link>
         </div>
       </CardContent>
     </Card>

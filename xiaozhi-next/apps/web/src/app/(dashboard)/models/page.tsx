@@ -1,11 +1,7 @@
 'use client';
 /**
- * 模型配置页
- *
- * 对标原 Vue 2 /model-config 页面。
- * 左侧模型类型切换，右侧数据表格，支持增删改。
- * 新增/编辑时，根据选择的供应器动态渲染配置表单。
- */
+ * 模型配置页面
+ * 对标原 Vue 2 /model-config 页面。 * 左侧模型类型切换，右侧数据表格，支持增删改。 * 新增/编辑时，根据选择的供应商动态渲染配置表单。 */
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -33,7 +29,7 @@ interface FieldSchema {
   options?: { label: string; value: string }[]; // 下拉选项
 }
 
-/** 供应器 */
+/** 供应商 */
 interface Provider {
   id: string;
   providerCode: string;
@@ -93,8 +89,8 @@ export default function ModelsPage() {
 
   return (
     <div className="max-w-6xl">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">模型配置</h1>
+      <div className="flex justify-between items-center mb-5">
+        <h1 className="text-xl font-semibold">模型配置</h1>
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditing(null); }}>
           <DialogTrigger asChild>
             <Button><Plus size={16} className="mr-1" />新增模型</Button>
@@ -111,7 +107,7 @@ export default function ModelsPage() {
       </div>
 
       {/* 类型选择 */}
-      <div className="flex gap-2 mb-4 flex-wrap">
+      <div className="flex gap-1.5 mb-4 flex-wrap">
         {MODEL_TYPES.map(t => (
           <Button
             key={t}
@@ -125,14 +121,14 @@ export default function ModelsPage() {
       </div>
 
       {/* 模型列表 */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         {loading ? (
           <p className="text-muted-foreground text-sm py-4">加载中...</p>
         ) : models.length === 0 ? (
           <p className="text-muted-foreground text-sm py-4">暂无 {activeType} 模型配置</p>
         ) : (
           models.map(m => (
-            <Card key={m.id} className="hover:shadow-sm">
+            <Card key={m.id} className="transition-colors hover:border-primary/15">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
@@ -141,14 +137,14 @@ export default function ModelsPage() {
                       <span className="text-xs text-muted-foreground">{m.modelCode}</span>
                       {m.isDefault === 1 && <Badge variant="default" className="text-xs">默认</Badge>}
                       {m.isEnabled === 1
-                        ? <Check size={14} className="text-green-500" />
+                        ? <Check size={14} className="text-emerald-500" />
                         : <X size={14} className="text-destructive" />}
                     </div>
                     {m.docLink && <p className="text-xs text-muted-foreground mt-1">{m.docLink}</p>}
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" variant="ghost" onClick={() => handleToggleDefault(m.id)} title="设为默认">
-                      {m.isDefault === 1 ? '默认' : '设默认'}
+                      {m.isDefault === 1 ? '默认' : '取消默认'}
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => handleToggleEnabled(m.id, m.isEnabled)} title="启用/禁用">
                       {m.isEnabled === 1 ? '禁用' : '启用'}
@@ -189,11 +185,11 @@ function ModelForm({ initial, modelType, onSuccess }: { initial: any; modelType:
     initial?.configJson ? JSON.stringify(initial.configJson, null, 2) : ''
   );
 
-  // 供应器相关
+  // 供应商相关的
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loadingProviders, setLoadingProviders] = useState(false);
 
-  // 加载供应器列表
+  // 加载供应商列表
   useEffect(() => {
     setLoadingProviders(true);
     ofetch(`/api/models/${modelType}/providers`, { headers: authHeaders })
@@ -220,7 +216,7 @@ function ModelForm({ initial, modelType, onSuccess }: { initial: any; modelType:
     }
   }, [initial]);
 
-  // 选择供应器时，自动填充 fields JSON
+  // 选择供应商时，自动填充 fields JSON
   const handleProviderChange = (providerId: string) => {
     const provider = providers.find(p => p.id === providerId);
     if (provider?.fields) {
@@ -262,23 +258,23 @@ function ModelForm({ initial, modelType, onSuccess }: { initial: any; modelType:
         <Input value={basicInfo.modelName} onChange={e => setBasicInfo({...basicInfo, modelName: e.target.value})} placeholder="显示名称" />
       </div>
 
-      {/* 供应器选择（新增模式） */}
+      {/* 供应商选择（新增模式） */}
       {!initial && (
         <div className="space-y-1">
-          <Label>供应器</Label>
+          <Label>供应商</Label>
           {loadingProviders ? (
             <p className="text-sm text-muted-foreground">加载中...</p>
           ) : providers.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              暂无可用供应器，请先去 <Link href="/providers" className="text-blue-500 hover:underline">供应器管理</Link> 添加
+              暂无可用的供应商，请先去<Link href="/providers" className="text-primary hover:underline">供应商管理</Link> 添加
             </p>
           ) : (
             <select
-              className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
+              className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-none"
               value=""
               onChange={e => handleProviderChange(e.target.value)}
             >
-              <option value="">请选择供应器</option>
+              <option value="">请选择供应商</option>
               {providers.map(p => (
                 <option key={p.id} value={p.id}>{p.name} ({p.providerCode})</option>
               ))}

@@ -117,9 +117,9 @@ export default function OtaPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Package size={24} />OTA 固件管理
+      <div className="flex justify-between items-center mb-5">
+        <h1 className="text-xl font-semibold flex items-center gap-2">
+          <Package size={20} strokeWidth={1.8} />OTA 固件管理
         </h1>
         <div className="flex gap-2">
           {selectedIds.size > 0 && (
@@ -139,7 +139,7 @@ export default function OtaPage() {
           placeholder="搜索固件名称..."
           value={keyword}
           onChange={(e) => { setKeyword(e.target.value); setPage(1); }}
-          className="max-w-xs"
+          className="max-w-xs h-8"
         />
       </div>
 
@@ -161,7 +161,7 @@ export default function OtaPage() {
       ) : (
         <div className="space-y-2">
           {data.map((row: any) => (
-            <Card key={row.id} className="hover:shadow-sm">
+            <Card key={row.id} className="transition-colors hover:border-primary/15">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -215,7 +215,7 @@ export default function OtaPage() {
       )}
 
       {/* 分页 */}
-      <div className="flex items-center justify-between mt-4">
+      <div className="flex items-center justify-between mt-5">
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">每页</span>
           <select
@@ -231,11 +231,11 @@ export default function OtaPage() {
         {totalPages > 1 && (
           <div className="flex items-center gap-1">
             <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(1)}>首页</Button>
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="h-7 w-7 p-0">
               <ChevronLeft size={14} />
             </Button>
             <span className="text-sm text-muted-foreground px-2">{page} / {totalPages}</span>
-            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="h-7 w-7 p-0">
               <ChevronRight size={14} />
             </Button>
             <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(totalPages)}>末页</Button>
@@ -523,7 +523,7 @@ function FirmwareDialog({ open, editing, onClose, onSaved, authHeaders }: {
                 <div className="w-full bg-muted rounded-full h-2 mt-2">
                   <div
                     className={`h-2 rounded-full transition-all duration-300 ${
-                      uploadStatus === 'success' ? 'bg-green-500' :
+                      uploadStatus === 'success' ? 'bg-emerald-500' :
                       uploadStatus === 'exception' ? 'bg-destructive' : 'bg-primary'
                     }`}
                     style={{ width: `${uploadProgress}%` }}

@@ -123,9 +123,9 @@ export default function VoiceClonePage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Mic size={24} />声音克隆
+      <div className="flex justify-between items-center mb-5">
+        <h1 className="text-xl font-semibold flex items-center gap-2">
+          <Mic size={20} strokeWidth={1.8} />声音克隆
         </h1>
         <Button onClick={() => setUploadDialogOpen(true)}>
           <Plus size={16} className="mr-1" />上传音频
@@ -136,7 +136,7 @@ export default function VoiceClonePage() {
         placeholder="搜索..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="mb-4 max-w-md"
+        className="mb-4 max-w-sm h-8"
       />
 
       {loading ? (
@@ -144,9 +144,9 @@ export default function VoiceClonePage() {
       ) : clones.length === 0 ? (
         <p className="text-muted-foreground text-sm">暂无克隆记录，点击「上传音频」开始</p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {clones.map((clone: any) => (
-            <Card key={clone.id} className="hover:shadow-sm">
+            <Card key={clone.id} className="transition-colors hover:border-primary/15">
               <CardContent className="p-4 flex items-center justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">

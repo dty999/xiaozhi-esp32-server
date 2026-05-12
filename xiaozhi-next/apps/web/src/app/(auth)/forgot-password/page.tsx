@@ -90,35 +90,38 @@ export default function ForgotPasswordPage() {
 
   if (success) {
     return (
-      <Card className="shadow-lg">
+      <Card className="shadow-md border">
         <CardContent className="pt-6 space-y-4 text-center">
-          <div className="text-green-600 text-lg font-semibold">密码重置成功</div>
-          <Button className="w-full" onClick={() => router.push('/login')}>前往登录</Button>
+          <div className="text-emerald-600 text-lg font-semibold">密码重置成功</div>
+          <Button className="w-full h-9" onClick={() => router.push('/login')}>前往登录</Button>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="shadow-lg">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl">忘记密码</CardTitle>
+    <Card className="shadow-md border">
+      <CardHeader className="text-center pb-4">
+        <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center mx-auto mb-3">
+          <span className="text-primary-foreground text-sm font-bold">XZ</span>
+        </div>
+        <CardTitle className="text-xl">忘记密码</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <Input placeholder="手机号" value={mobile} onChange={(e) => setMobile(e.target.value)} />
         <div className="flex gap-2">
           <Input placeholder="短信验证码" value={smsCode} onChange={(e) => setSmsCode(e.target.value)} className="flex-1" />
-          <Button variant="outline" size="sm" onClick={handleSendSms} disabled={sendingSms || smsCountdown > 0} className="flex-shrink-0">
+          <Button variant="outline" size="sm" onClick={handleSendSms} disabled={sendingSms || smsCountdown > 0} className="flex-shrink-0 h-8">
             {smsCountdown > 0 ? `${smsCountdown}s` : '发送验证码'}
           </Button>
         </div>
         <Input type="password" placeholder="新密码（至少6位）" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
         {error && <p className="text-sm text-destructive">{error}</p>}
-        <Button className="w-full" onClick={handleReset} disabled={loading}>
+        <Button className="w-full h-9" onClick={handleReset} disabled={loading}>
           {loading ? '重置中...' : '重置密码'}
         </Button>
         <p className="text-center text-sm">
-          <Link href="/login" className="text-primary hover:underline">返回登录</Link>
+          <Link href="/login" className="text-primary hover:underline text-xs">返回登录</Link>
         </p>
       </CardContent>
     </Card>

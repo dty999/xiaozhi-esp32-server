@@ -114,9 +114,9 @@ export default function VoicePrintsPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <User size={24} />声纹管理
+      <div className="flex justify-between items-center mb-5">
+        <h1 className="text-xl font-semibold flex items-center gap-2">
+          <User size={20} strokeWidth={1.8} />声纹管理
         </h1>
       </div>
 
@@ -161,9 +161,9 @@ export default function VoicePrintsPage() {
       ) : voicePrints.length === 0 ? (
         <p className="text-muted-foreground text-sm">暂无声纹，点击「新增声纹」添加</p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {voicePrints.map((vp: any) => (
-            <Card key={vp.id} className="hover:shadow-sm">
+            <Card key={vp.id} className="transition-colors hover:border-primary/15">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">

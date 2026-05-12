@@ -86,11 +86,11 @@ export function DataTablePage({
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">{title}</h1>
+      <div className="flex justify-between items-center mb-5">
+        <h1 className="text-xl font-semibold">{title}</h1>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>
-            <Plus size={16} className="mr-1" />新增
+          <Button onClick={() => { setEditing(null); setDialogOpen(true); }} className="h-8">
+            <Plus size={15} strokeWidth={1.8} className="mr-1" />新增
           </Button>
           <DialogContent>
             <DialogHeader><DialogTitle>{editing ? '编辑' : '新增'}{title}</DialogTitle></DialogHeader>
@@ -99,14 +99,14 @@ export function DataTablePage({
         </Dialog>
       </div>
 
-      <Input placeholder={searchPlaceholder} value={keyword} onChange={e => { setKeyword(e.target.value); setPage(1); }} className="mb-4 max-w-md" />
+      <Input placeholder={searchPlaceholder} value={keyword} onChange={e => { setKeyword(e.target.value); setPage(1); }} className="mb-4 max-w-sm h-8" />
 
       {loading ? <p className="text-muted-foreground text-sm">加载中...</p>
       : data.length === 0 ? <p className="text-muted-foreground text-sm">暂无数据</p>
       : (
         <div className="space-y-2">
           {data.map((row: any) => (
-            <Card key={row.id}>
+            <Card key={row.id} className="transition-colors hover:border-primary/15">
               <CardContent className="p-3">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-sm">
@@ -120,14 +120,14 @@ export function DataTablePage({
                   <div className="flex gap-1 ml-4 flex-shrink-0">
                     {rowActions ? rowActions(row, fetchData) : (
                       <>
-                        <Button size="sm" variant="ghost" onClick={() => {
+                        <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => {
                           if (detailUrl) { router.push(detailUrl.replace('{id}', row.id)); }
                           else { setEditing(row); setDialogOpen(true); }
                         }}>
-                          <Pencil size={14} />
+                          <Pencil size={14} strokeWidth={1.8} />
                         </Button>
-                        <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(row.id)}>
-                          <Trash2 size={14} />
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/5" onClick={() => handleDelete(row.id)}>
+                          <Trash2 size={14} strokeWidth={1.8} />
                         </Button>
                       </>
                     )}
@@ -141,12 +141,12 @@ export function DataTablePage({
 
       {/* 分页 */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-4">
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+        <div className="flex items-center justify-center gap-2 mt-5">
+          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="h-7 w-7 p-0">
             <ChevronLeft size={14} />
           </Button>
           <span className="text-sm text-muted-foreground">{page} / {totalPages}</span>
-          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="h-7 w-7 p-0">
             <ChevronRight size={14} />
           </Button>
         </div>
@@ -217,7 +217,7 @@ function CrudForm({ fields, editing, apiBase, onSuccess }: { fields: FormField[]
           <Label>{f.label}</Label>
           {f.type === 'textarea' ? (
             <textarea
-              className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
+              className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-none transition-colors resize-y"
               value={form[f.key] || ''}
               onChange={e => setForm({ ...form, [f.key]: e.target.value })}
               placeholder={f.placeholder}
@@ -225,7 +225,7 @@ function CrudForm({ fields, editing, apiBase, onSuccess }: { fields: FormField[]
             />
           ) : f.type === 'select' ? (
             <select
-              className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-none transition-colors"
               value={form[f.key] || ''}
               onChange={e => setForm({ ...form, [f.key]: e.target.value })}
             >
@@ -250,7 +250,7 @@ function CrudForm({ fields, editing, apiBase, onSuccess }: { fields: FormField[]
           )}
         </div>
       ))}
-      <Button onClick={handleSubmit} disabled={loading} className="w-full">{loading ? '保存中...' : '保存'}</Button>
+      <Button onClick={handleSubmit} disabled={loading} className="w-full h-8">{loading ? '保存中...' : '保存'}</Button>
     </div>
   );
 }

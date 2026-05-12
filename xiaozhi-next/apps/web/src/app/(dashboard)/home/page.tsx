@@ -85,7 +85,7 @@ export default function HomePage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map(i => (
-            <Card key={i}><CardContent className="p-6"><Skeleton className="h-28" /></CardContent></Card>
+            <Card key={i}><CardContent className="p-5"><Skeleton className="h-28" /></CardContent></Card>
           ))}
         </div>
       </div>
@@ -96,14 +96,14 @@ export default function HomePage() {
     <div>
       {/* 顶部操作栏 */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Cpu size={24} />
+        <h1 className="text-xl font-semibold flex items-center gap-2">
+          <Cpu size={20} strokeWidth={1.8} />
           我的智能体
-          <Badge variant="secondary" className="ml-2">{agents.length}</Badge>
+          <Badge variant="secondary" className="ml-1">{agents.length}</Badge>
         </h1>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button><Plus size={16} className="mr-1" />新建智能体</Button>
+            <Button className="h-8"><Plus size={15} strokeWidth={1.8} className="mr-1" />新建智能体</Button>
           </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader><DialogTitle>新建智能体</DialogTitle></DialogHeader>
@@ -120,27 +120,27 @@ export default function HomePage() {
         placeholder="搜索名称或编号..."
         value={keyword}
         onChange={(e) => setKeyword(e.target.value)}
-        className="mb-6 max-w-md"
+        className="mb-5 max-w-sm h-8"
       />
 
       {/* 卡片网格 */}
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
-          <Cpu size={48} className="mx-auto mb-4 opacity-20" />
-          <p className="text-lg">{keyword ? '没有匹配的智能体' : '暂无智能体'}</p>
+          <Cpu size={44} strokeWidth={1.5} className="mx-auto mb-4 opacity-20" />
+          <p className="text-base">{keyword ? '没有匹配的智能体' : '暂无智能体'}</p>
           {!keyword && (
-            <Button variant="outline" className="mt-4" onClick={() => setDialogOpen(true)}>创建第一个智能体</Button>
+            <Button variant="outline" className="mt-4 h-8" onClick={() => setDialogOpen(true)}>创建第一个智能体</Button>
           )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(agent => (
-            <Card key={agent.id} className="hover:shadow-md transition-shadow group">
-              <CardHeader className="pb-2">
+            <Card key={agent.id} className="group transition-colors hover:border-primary/20">
+              <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
                   <div className="flex-1 min-w-0">
-                    <CardTitle className="truncate text-base">{agent.agentName}</CardTitle>
-                    <p className="text-xs text-muted-foreground mt-0.5">{agent.agentCode}</p>
+                    <CardTitle className="truncate text-[15px]">{agent.agentName}</CardTitle>
+                    <p className="text-xs text-muted-foreground mt-1">{agent.agentCode}</p>
                   </div>
                 </div>
               </CardHeader>
@@ -149,13 +149,13 @@ export default function HomePage() {
                 {agent.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {agent.tags.map(tag => (
-                      <Badge key={tag.id} variant="secondary" className="text-xs">{tag.tagName}</Badge>
+                      <Badge key={tag.id} variant="secondary" className="text-[11px] font-normal">{tag.tagName}</Badge>
                     ))}
                   </div>
                 )}
 
                 {/* 信息 */}
-                <div className="text-xs text-muted-foreground space-y-1">
+                <div className="text-xs text-muted-foreground space-y-1.5">
                   <div className="flex justify-between">
                     <span>绑定设备</span>
                     <span className="font-medium text-foreground">{agent.devicesCount || 0}</span>
@@ -169,14 +169,14 @@ export default function HomePage() {
                 </div>
 
                 {/* 操作按钮 */}
-                <div className="flex gap-2 pt-2">
-                  <Button size="sm" className="flex-1" onClick={() => setConfigAgent({ id: agent.id, name: agent.agentName })}>
-                    <Settings size={14} className="mr-1" />配置
+                <div className="flex gap-2 pt-1">
+                  <Button size="sm" className="flex-1 h-7 text-xs" onClick={() => setConfigAgent({ id: agent.id, name: agent.agentName })}>
+                    <Settings size={13} strokeWidth={1.8} className="mr-1" />配置
                   </Button>
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button size="sm" variant="outline" className="flex-1">
-                        <MessageSquare size={14} className="mr-1" />聊天记录
+                      <Button size="sm" variant="outline" className="flex-1 h-7 text-xs">
+                        <MessageSquare size={13} strokeWidth={1.8} className="mr-1" />聊天记录
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -186,8 +186,8 @@ export default function HomePage() {
                       <ChatHistoryPanel agentId={agent.id} />
                     </DialogContent>
                   </Dialog>
-                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => handleDelete(agent.id, agent.agentName)}>
-                    <Trash2 size={14} />
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/5" onClick={() => handleDelete(agent.id, agent.agentName)}>
+                    <Trash2 size={14} strokeWidth={1.8} />
                   </Button>
                 </div>
               </CardContent>
@@ -248,8 +248,8 @@ function CreateAgentForm({ onCreate, onCancel }: { onCreate: (name: string, temp
         <p className="text-xs text-muted-foreground">选择模板后，智能体将自动配置模板中的模型和参数</p>
       </div>
       <div className="flex gap-2 pt-2">
-        <Button variant="outline" onClick={onCancel} className="flex-1">取消</Button>
-        <Button onClick={handleSubmit} disabled={creating || !name.trim()} className="flex-1">
+        <Button variant="outline" onClick={onCancel} className="flex-1 h-8">取消</Button>
+        <Button onClick={handleSubmit} disabled={creating || !name.trim()} className="flex-1 h-8">
           {creating && <Loader2 className="animate-spin mr-2" size={14} />}
           创建
         </Button>

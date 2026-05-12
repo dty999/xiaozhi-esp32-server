@@ -117,9 +117,9 @@ export default function ParamsPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Settings size={24} />参数管理
+      <div className="flex justify-between items-center mb-5">
+        <h1 className="text-xl font-semibold flex items-center gap-2">
+          <Settings size={20} strokeWidth={1.8} />参数管理
         </h1>
         <div className="flex gap-2">
           {selectedIds.size > 0 && (
@@ -139,7 +139,7 @@ export default function ParamsPage() {
           placeholder="搜索参数编码..."
           value={keyword}
           onChange={e => { setKeyword(e.target.value); setPage(1); }}
-          className="max-w-xs"
+          className="max-w-xs h-8"
         />
         <Button variant="outline" onClick={() => { setPage(1); fetchData(); }}>
           <Search size={16} className="mr-1" />搜索
@@ -178,7 +178,7 @@ export default function ParamsPage() {
       )}
 
       {/* 分页 */}
-      <div className="flex items-center justify-between mt-4">
+      <div className="flex items-center justify-between mt-5">
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">每页</span>
           <select
@@ -193,11 +193,11 @@ export default function ParamsPage() {
         {totalPages > 1 && (
           <div className="flex items-center gap-1">
             <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(1)}>首页</Button>
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="h-7 w-7 p-0">
               <ChevronLeft size={14} />
             </Button>
             <span className="text-sm text-muted-foreground px-2">{page} / {totalPages}</span>
-            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="h-7 w-7 p-0">
               <ChevronRight size={14} />
             </Button>
             <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(totalPages)}>末页</Button>
@@ -232,7 +232,7 @@ function ParamCard({ row, selected, onToggleSelect, onEdit, onDelete, maskValue 
   const displayValue = isSensitive && !showSensitive ? maskValue(row.paramValue) : row.paramValue;
 
   return (
-    <Card className="hover:shadow-sm">
+    <Card className="transition-colors hover:border-primary/15">
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -417,7 +417,7 @@ function ParamDialog({ open, editing, onClose, onSaved, authHeaders }: {
               />
             )}
             {valueType === 3 && (
-              <p className="text-xs text-blue-600">每行一条，除最后一行外每行以英文分号结尾</p>
+              <p className="text-xs text-primary">每行一条，除最后一行外每行以英文分号结尾</p>
             )}
           </div>
 

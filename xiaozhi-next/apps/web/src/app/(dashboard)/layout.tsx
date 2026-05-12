@@ -26,8 +26,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="animate-spin text-primary" size={32} />
-        <span className="ml-3 text-muted-foreground">加载中...</span>
+        <Loader2 className="animate-spin text-primary" size={28} />
+        <span className="ml-3 text-muted-foreground text-sm">加载中...</span>
       </div>
     );
   }
@@ -35,12 +35,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return null; // 等待跳转
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen flex flex-col bg-background">
       <DashboardHeader />
-      <div className="flex">
+      <div className="flex flex-1">
         <Sidebar isAdmin={user.superAdmin === 1} />
-        <main className="flex-1 p-6 min-h-[calc(100vh-7rem)] overflow-auto">
-          {children}
+        <main className="flex-1 p-6 min-h-[calc(100vh-3.5rem-2.5rem)] overflow-auto">
+          <div className="max-w-6xl mx-auto">
+            {children}
+          </div>
         </main>
       </div>
       <VersionFooter />

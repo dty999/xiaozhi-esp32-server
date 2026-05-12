@@ -163,9 +163,9 @@ export default function UsersPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Users size={24} />用户管理
+      <div className="flex justify-between items-center mb-5">
+        <h1 className="text-xl font-semibold flex items-center gap-2">
+          <Users size={20} strokeWidth={1.8} />用户管理
         </h1>
         <div className="flex gap-2">
           <Button onClick={() => setCreateDialogOpen(true)}>
@@ -193,7 +193,7 @@ export default function UsersPage() {
           placeholder="搜索手机号..."
           value={keyword}
           onChange={e => { setKeyword(e.target.value); setPage(1); }}
-          className="max-w-xs"
+          className="max-w-xs h-8"
         />
         <Button variant="outline" onClick={() => { setPage(1); fetchData(); }}>
           <Search size={16} className="mr-1" />搜索
@@ -218,7 +218,7 @@ export default function UsersPage() {
       ) : (
         <div className="space-y-2">
           {data.map((row: any) => (
-            <Card key={row.id} className="hover:shadow-sm">
+            <Card key={row.id} className="transition-colors hover:border-primary/15">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -277,7 +277,7 @@ export default function UsersPage() {
       )}
 
       {/* 分页 */}
-      <div className="flex items-center justify-between mt-4">
+      <div className="flex items-center justify-between mt-5">
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">每页</span>
           <select
@@ -293,11 +293,11 @@ export default function UsersPage() {
         {totalPages > 1 && (
           <div className="flex items-center gap-1">
             <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(1)}>首页</Button>
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="h-7 w-7 p-0">
               <ChevronLeft size={14} />
             </Button>
             <span className="text-sm text-muted-foreground px-2">{page} / {totalPages}</span>
-            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="h-7 w-7 p-0">
               <ChevronRight size={14} />
             </Button>
             <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(totalPages)}>末页</Button>
@@ -338,9 +338,9 @@ function PasswordResultDialog({ open, password, onClose }: {
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
+          <div className="p-4 bg-primary/5 border border-primary/15 rounded-lg text-center">
             <p className="text-sm text-muted-foreground mb-2">新密码</p>
-            <p className="text-2xl font-mono font-bold text-blue-700 select-all">{password}</p>
+            <p className="text-2xl font-mono font-bold text-primary select-all">{password}</p>
           </div>
           <p className="text-sm text-muted-foreground">
             请将此密码告知用户，建议登录后立即修改密码。

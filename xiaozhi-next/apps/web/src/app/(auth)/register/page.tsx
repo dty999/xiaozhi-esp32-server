@@ -102,26 +102,29 @@ export default function RegisterPage() {
 
   if (success) {
     return (
-      <Card className="shadow-lg">
+      <Card className="shadow-md border">
         <CardContent className="pt-6 space-y-4 text-center">
-          <div className="text-green-600 text-lg font-semibold">注册成功</div>
+          <div className="text-emerald-600 text-lg font-semibold">注册成功</div>
           <p className="text-muted-foreground text-sm">您现在可以使用账号登录系统。</p>
-          <Button className="w-full" onClick={() => router.push('/login')}>前往登录</Button>
+          <Button className="w-full h-9" onClick={() => router.push('/login')}>前往登录</Button>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="shadow-lg">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl">注册账号</CardTitle>
+    <Card className="shadow-md border">
+      <CardHeader className="text-center pb-4">
+        <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center mx-auto mb-3">
+          <span className="text-primary-foreground text-sm font-bold">XZ</span>
+        </div>
+        <CardTitle className="text-xl">注册账号</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* 模式切换 */}
-        <div className="flex gap-2">
-          <Button variant={mode === 'phone' ? 'default' : 'outline'} size="sm" className="flex-1" onClick={() => setMode('phone')}>手机注册</Button>
-          <Button variant={mode === 'username' ? 'default' : 'outline'} size="sm" className="flex-1" onClick={() => setMode('username')}>用户名注册</Button>
+        <div className="flex gap-1 p-0.5 bg-muted rounded-md">
+          <Button variant={mode === 'phone' ? 'default' : 'ghost'} size="sm" className="flex-1 h-7 text-xs font-medium" onClick={() => setMode('phone')}>手机注册</Button>
+          <Button variant={mode === 'username' ? 'default' : 'ghost'} size="sm" className="flex-1 h-7 text-xs font-medium" onClick={() => setMode('username')}>用户名注册</Button>
         </div>
 
         {mode === 'username' && (
@@ -132,7 +135,7 @@ export default function RegisterPage() {
             <Input placeholder="手机号" value={mobile} onChange={(e) => setMobile(e.target.value)} />
             <div className="flex gap-2">
               <Input placeholder="短信验证码" value={smsCode} onChange={(e) => setSmsCode(e.target.value)} className="flex-1" />
-              <Button variant="outline" size="sm" onClick={handleSendSms} disabled={sendingSms || smsCountdown > 0} className="flex-shrink-0">
+              <Button variant="outline" size="sm" onClick={handleSendSms} disabled={sendingSms || smsCountdown > 0} className="flex-shrink-0 h-8">
                 {smsCountdown > 0 ? `${smsCountdown}s` : '发送验证码'}
               </Button>
             </div>
@@ -144,12 +147,12 @@ export default function RegisterPage() {
 
         {error && <p className="text-sm text-destructive">{error}</p>}
 
-        <Button className="w-full" onClick={handleRegister} disabled={loading}>
+        <Button className="w-full h-9" onClick={handleRegister} disabled={loading}>
           {loading ? '注册中...' : '注 册'}
         </Button>
 
         <p className="text-center text-sm">
-          已有账号？<Link href="/login" className="text-primary hover:underline">立即登录</Link>
+          已有账号？<Link href="/login" className="text-primary hover:underline text-xs">立即登录</Link>
         </p>
       </CardContent>
     </Card>

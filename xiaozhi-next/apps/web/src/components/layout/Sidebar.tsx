@@ -80,18 +80,18 @@ export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
   return (
     <aside
       className={cn(
-        'relative border-r bg-card h-[calc(100vh-3.5rem)] transition-all duration-200 overflow-y-auto',
+        'relative border-r bg-card h-[calc(100vh-3.5rem-2.5rem)] transition-all duration-200 ease-in-out overflow-y-auto shrink-0',
         collapsed ? 'w-16' : 'w-56'
       )}
     >
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="absolute right-2 top-2 p-1 rounded hover:bg-muted text-muted-foreground"
+        className="absolute right-2 top-3 p-1 rounded-md hover:bg-accent text-muted-foreground transition-colors"
       >
-        {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
       </button>
 
-      <nav className={cn('mt-10 space-y-1 px-2', collapsed && 'px-1')}>
+      <nav className={cn('mt-12 space-y-0.5 px-2', collapsed && 'px-1.5')}>
         {visibleItems.map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + '/');
           const Icon = item.icon;
@@ -100,16 +100,16 @@ export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
               key={item.href}
               onClick={() => router.push(item.href)}
               className={cn(
-                'w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+                'w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-all duration-150',
                 active
-                  ? 'bg-primary/10 text-primary font-medium'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                  ? 'bg-primary/[0.08] text-primary font-medium'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent',
                 collapsed && 'justify-center px-2'
               )}
               title={collapsed ? item.label : undefined}
             >
-              <Icon size={18} />
-              {!collapsed && <span>{item.label}</span>}
+              <Icon size={17} strokeWidth={1.8} />
+              {!collapsed && <span className="leading-none">{item.label}</span>}
             </button>
           );
         })}

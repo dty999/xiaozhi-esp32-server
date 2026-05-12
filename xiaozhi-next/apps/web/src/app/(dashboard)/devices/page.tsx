@@ -10,12 +10,11 @@ import { useEffect, useState } from 'react';
 import { ofetch } from 'ofetch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { useAuthStore } from '@/hooks/useAuth';
 
@@ -121,14 +120,14 @@ export default function DevicesPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">设备管理</h1>
+      <div className="flex justify-between items-center mb-5">
+        <h1 className="text-xl font-semibold">设备管理</h1>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => fetchDevices(page)}>
-            <RefreshCw size={14} className="mr-1" />刷新
+          <Button variant="outline" size="sm" className="h-7" onClick={() => fetchDevices(page)}>
+            <RefreshCw size={13} strokeWidth={1.8} className="mr-1" />刷新
           </Button>
-          <Button size="sm" onClick={openCreate}>
-            <Plus size={14} className="mr-1" />添加设备
+          <Button size="sm" className="h-7" onClick={openCreate}>
+            <Plus size={13} strokeWidth={1.8} className="mr-1" />添加设备
           </Button>
         </div>
       </div>
@@ -140,33 +139,33 @@ export default function DevicesPage() {
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-          className="max-w-xs"
+          className="max-w-xs h-8"
         />
-        <Button variant="secondary" onClick={handleSearch}>搜索</Button>
+        <Button variant="secondary" size="sm" className="h-8" onClick={handleSearch}>搜索</Button>
       </div>
 
       {/* 设备列表 */}
       {loading ? (
         <div className="space-y-3">
-          {[1, 2, 3].map(i => <Card key={i}><CardContent className="p-4"><Skeleton className="h-16" /></CardContent></Card>)}
+          {[1, 2, 3].map(i => <Card key={i}><CardContent className="p-4"><Skeleton className="h-14" /></CardContent></Card>)}
         </div>
       ) : (
         <>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {devices.map(d => (
-              <Card key={d.id} className="hover:shadow-sm transition-shadow">
+              <Card key={d.id} className="transition-colors hover:border-primary/15">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-medium">{d.macAddress}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-sm font-medium">{d.macAddress}</span>
                         {isOnline(d.lastConnectedAt)
-                          ? <Badge variant="default" className="bg-green-500"><Wifi size={12} className="mr-1" />在线</Badge>
-                          : <Badge variant="secondary"><WifiOff size={12} className="mr-1" />离线</Badge>
+                          ? <Badge variant="default" className="bg-emerald-500/90 text-white border-0 text-[10px]"><Wifi size={10} strokeWidth={2.5} className="mr-0.5" />在线</Badge>
+                          : <Badge variant="secondary" className="text-[10px]"><WifiOff size={10} strokeWidth={2.5} className="mr-0.5" />离线</Badge>
                         }
-                        {d.isBound === 1 && <Badge variant="outline">已绑定</Badge>}
+                        {d.isBound === 1 && <Badge variant="outline" className="text-[10px]">已绑定</Badge>}
                       </div>
-                      <div className="flex gap-4 mt-1 text-sm text-muted-foreground">
+                      <div className="flex gap-x-4 gap-y-0.5 mt-1.5 text-xs text-muted-foreground flex-wrap">
                         {d.alias && <span>别名: {d.alias}</span>}
                         {d.board && <span>主板: {d.board}</span>}
                         {d.appVersion && <span>版本: {d.appVersion}</span>}
@@ -177,10 +176,10 @@ export default function DevicesPage() {
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-1 ml-4">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(d)}>编辑</Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(d.id)} className="text-red-500 hover:text-red-700">
-                        <Trash2 size={14} />
+                    <div className="flex gap-1 ml-4 shrink-0">
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => openEdit(d)}>编辑</Button>
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/5" onClick={() => handleDelete(d.id)}>
+                        <Trash2 size={14} strokeWidth={1.8} />
                       </Button>
                     </div>
                   </div>
@@ -191,12 +190,13 @@ export default function DevicesPage() {
 
           {/* 分页 */}
           {total > limit && (
-            <div className="flex justify-center gap-2 mt-6">
+            <div className="flex justify-center gap-1.5 mt-5">
               {Array.from({ length: Math.ceil(total / limit) }, (_, i) => i + 1).map(p => (
                 <Button
                   key={p}
                   variant={p === page ? 'default' : 'outline'}
                   size="sm"
+                  className="h-7 w-7 p-0 text-xs"
                   onClick={() => { setPage(p); fetchDevices(p); }}
                 >
                   {p}
@@ -214,38 +214,38 @@ export default function DevicesPage() {
             <DialogTitle>{editingDevice ? '编辑设备' : '添加设备'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div>
-              <Label>MAC 地址 *</Label>
+            <div className="space-y-1">
+              <Label className="text-sm">MAC 地址 *</Label>
               <Input
                 value={formData.macAddress}
                 onChange={(e) => setFormData({ ...formData, macAddress: e.target.value })}
                 disabled={!!editingDevice}
               />
             </div>
-            <div>
-              <Label>别名</Label>
+            <div className="space-y-1">
+              <Label className="text-sm">别名</Label>
               <Input
                 value={formData.alias}
                 onChange={(e) => setFormData({ ...formData, alias: e.target.value })}
               />
             </div>
-            <div>
-              <Label>主板型号</Label>
+            <div className="space-y-1">
+              <Label className="text-sm">主板型号</Label>
               <Input
                 value={formData.board}
                 onChange={(e) => setFormData({ ...formData, board: e.target.value })}
               />
             </div>
-            <div>
-              <Label>设备类型</Label>
+            <div className="space-y-1">
+              <Label className="text-sm">设备类型</Label>
               <Input
                 value={formData.deviceType}
                 onChange={(e) => setFormData({ ...formData, deviceType: e.target.value })}
                 placeholder="esp32-s3 / esp32-c3"
               />
             </div>
-            <div>
-              <Label>固件类型</Label>
+            <div className="space-y-1">
+              <Label className="text-sm">固件类型</Label>
               <Input
                 value={formData.firmwareType}
                 onChange={(e) => setFormData({ ...formData, firmwareType: e.target.value })}
@@ -253,8 +253,8 @@ export default function DevicesPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>取消</Button>
-            <Button onClick={handleSave}>{editingDevice ? '保存' : '创建'}</Button>
+            <Button variant="outline" size="sm" className="h-8" onClick={() => setDialogOpen(false)}>取消</Button>
+            <Button size="sm" className="h-8" onClick={handleSave}>{editingDevice ? '保存' : '创建'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

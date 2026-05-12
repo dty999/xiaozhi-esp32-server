@@ -98,9 +98,9 @@ export default function VoiceResourcePage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Music size={24} />音色资源
+      <div className="flex justify-between items-center mb-5">
+        <h1 className="text-xl font-semibold flex items-center gap-2">
+          <Music size={20} strokeWidth={1.8} />音色资源
         </h1>
         <div className="flex gap-2">
           {selectedIds.size > 0 && (
@@ -119,7 +119,7 @@ export default function VoiceResourcePage() {
           placeholder="搜索名称..."
           value={keyword}
           onChange={(e) => { setKeyword(e.target.value); setPage(1); }}
-          className="max-w-xs"
+          className="max-w-xs h-8"
         />
         <Button variant="outline" onClick={() => { setPage(1); fetchData(); }}>
           <Search size={16} className="mr-1" />搜索
@@ -150,7 +150,7 @@ export default function VoiceResourcePage() {
 
           <div className="space-y-2">
             {data.map((row: any) => (
-              <Card key={row.id} className="hover:shadow-sm">
+              <Card key={row.id} className="transition-colors hover:border-primary/15">
                 <CardContent className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     {/* 选择框 */}
@@ -199,15 +199,15 @@ export default function VoiceResourcePage() {
 
       {/* 分页 */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-4">
+        <div className="flex items-center justify-center gap-2 mt-5">
           <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(1)}>
             首页
           </Button>
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="h-7 w-7 p-0">
             <ChevronLeft size={14} />
           </Button>
           <span className="text-sm text-muted-foreground">{page} / {totalPages}</span>
-          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} className="h-7 w-7 p-0">
             <ChevronRight size={14} />
           </Button>
           <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(totalPages)}>

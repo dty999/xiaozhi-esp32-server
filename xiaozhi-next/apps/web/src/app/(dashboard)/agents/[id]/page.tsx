@@ -53,8 +53,8 @@ export default function AgentConfigPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64 gap-3">
-        <Loader2 className="animate-spin" size={24} />
-        <span className="text-muted-foreground">加载中...</span>
+        <Loader2 className="animate-spin" size={22} />
+        <span className="text-muted-foreground text-sm">加载中...</span>
       </div>
     );
   }
@@ -66,21 +66,21 @@ export default function AgentConfigPage() {
   return (
     <div className="max-w-5xl">
       {/* 顶部导航 */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => router.back()}>
-            <ArrowLeft size={16} className="mr-1" />返回
+      <div className="flex justify-between items-center mb-5">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => router.back()}>
+            <ArrowLeft size={16} strokeWidth={1.8} className="mr-1" />返回
           </Button>
-          <h1 className="text-xl font-bold">{agent.agentName}</h1>
+          <h1 className="text-lg font-semibold">{agent.agentName}</h1>
         </div>
-        <Button onClick={handleSave} disabled={saving}>
+        <Button onClick={handleSave} disabled={saving} className="h-8">
           {saving && <Loader2 className="animate-spin mr-2" size={14} />}
-          <Save size={14} className="mr-1" />保存
+          <Save size={14} strokeWidth={1.8} className="mr-1" />保存
         </Button>
       </div>
 
       <Tabs defaultValue="basic">
-        <TabsList className="mb-6">
+        <TabsList className="mb-5">
           <TabsTrigger value="basic">基本信息</TabsTrigger>
           <TabsTrigger value="models">模型配置</TabsTrigger>
           <TabsTrigger value="tts">语音合成</TabsTrigger>

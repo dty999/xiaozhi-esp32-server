@@ -76,9 +76,9 @@ export default function KnowledgePage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <BookOpen size={24} />知识库
+      <div className="flex justify-between items-center mb-5">
+        <h1 className="text-xl font-semibold flex items-center gap-2">
+          <BookOpen size={20} strokeWidth={1.8} />知识库
         </h1>
         <Button
           onClick={() => {
@@ -95,7 +95,7 @@ export default function KnowledgePage() {
         placeholder="搜索知识库..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="mb-4 max-w-md"
+        className="mb-4 max-w-sm h-8"
       />
 
       {loading ? (
@@ -103,9 +103,9 @@ export default function KnowledgePage() {
       ) : datasets.length === 0 ? (
         <p className="text-muted-foreground text-sm">暂无知识库</p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {datasets.map((kb: any) => (
-            <Card key={kb.id} className="hover:shadow-sm">
+            <Card key={kb.id} className="transition-colors hover:border-primary/15">
               <CardContent className="p-4 flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
