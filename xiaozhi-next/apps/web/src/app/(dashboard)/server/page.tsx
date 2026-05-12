@@ -133,7 +133,7 @@ export default function ServerPage() {
                   </div>
 
                   <div className="flex gap-1.5 ml-4 flex-shrink-0">
-                    <!-- 重启 -->
+                    {/* 重启 */}
                     <Button
                       size="sm"
                       variant="outline"
@@ -147,7 +147,7 @@ export default function ServerPage() {
                       }
                       重启
                     </Button>
-                    <!-- 更新配置 -->
+                    {/* 更新配置 */}
                     <Button
                       size="sm"
                       variant="outline"
